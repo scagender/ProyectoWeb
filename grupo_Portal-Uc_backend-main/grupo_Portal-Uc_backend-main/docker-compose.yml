@@ -1,0 +1,31 @@
+version: '0.7'
+
+services:
+
+  db:
+    image: postgres:16rc1-alpine
+    env_file:
+      - sec.env  
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+  
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    env_file:
+      - sec.env
+    depends_on:
+      - db
+    ports:
+    - "3000:3000"
+    stdin_open: true
+    tty: true
+  
+  
+  
+  
+volumes:
+  db_data:
