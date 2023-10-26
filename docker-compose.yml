@@ -1,4 +1,4 @@
-version: '0.7'
+version: '3.7'
 
 services:
 
@@ -11,7 +11,7 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U webdb"]
+      test: ["CMD-SHELL", "pg_isready -U webdb -d webdb -t 5"]
       interval: 6s
       timeout: 5s
       retries: 5
@@ -23,7 +23,8 @@ services:
     env_file:
       - sec.env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
     - "3000:3000"
     restart: on-failure
