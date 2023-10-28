@@ -1,4 +1,4 @@
-'use strict';
+'use strict'
 
 module.exports = {
   async up (queryInterface, Sequelize) {
@@ -30,11 +30,10 @@ module.exports = {
         },
         onDelete: 'CASCADE' // Optional: If a user is deleted, related courses will also be deleted.
       }
-      
-    });
+    })
   },
 
   async down (queryInterface, Sequelize) {
-    await queryInterface.dropTable('Courses');
+    await queryInterface.dropTable('Courses')
   }
-};
+}
