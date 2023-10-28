@@ -2,12 +2,20 @@ const Router = require('koa-router');
 const { User, Course, Plan } = require('./models'); 
 
 const router = new Router();
+
 // USERS
 
 router.get('/users', async (ctx) => {
-  console.log("GET /users")
-  const users = await User.findAll();
-  ctx.body = users;
+  try {
+    console.log("GET /users")
+    const users = await User.findAll();
+    ctx.status = 200; // OK
+    ctx.body = users;
+  } catch (error) {
+    console.error(error);
+    ctx.status = 500; // Error interno del servidor
+    ctx.body = { message: 'Error interno del servidor' };
+  }
 });
 
 router.post('/create-users', async (ctx) => {
@@ -155,11 +163,19 @@ router.put('/courses/:id', async (ctx) => {
 
 
 
+// PLANS
 
 router.get('/plans', async (ctx) => {
-  console.log("GET /courses")
-  const plans = await Plan.findAll();
-  ctx.body = plans;
+  try {
+    console.log("GET /plans");
+    const plans = await Plan.findAll();
+    ctx.status = 200; // OK
+    ctx.body = plans;
+  } catch (error) {
+    console.error(error);
+    ctx.status = 500; // Error interno del servidor
+    ctx.body = { message: 'Error interno del servidor' };
+  }
 });
 
 
@@ -227,21 +243,40 @@ router.delete('/plans/:id', async (ctx) => {
 });
 
 
-
 router.get('/plans/:userId', async (ctx) => {
-  console.log("GET /courses")
-  const { userId } = ctx.params;
-  const userPlans = await Plan.findAll({ where: { user_id: userId } });
-  ctx.body = userPlans;
+  try {
+    const { userId } = ctx.params;
+    const userPlans = await Plan.findAll({ where: { user_id: userId } });
+    ctx.status = 200; // OK
+    ctx.body = userPlans;
+  } catch (error) {
+    console.error(error);
+    ctx.status = 500; // Error interno del servidor
+    ctx.body = { message: 'Error interno del servidor' };
+  }
 });
 
+
 router.get('/plans/:planId/courses', async (ctx) => {
-  console.log("GET /courses")
-  const { planId } = ctx.params;
-  const plan = await Plan.findByPk(planId, {
-    include: Course 
-  });
-  ctx.body = plan.Courses; 
+  try {
+    console.log("GET /courses");
+    const { planId } = ctx.params;
+    const plan = await Plan.findByPk(planId, {
+      include: Course 
+    });
+
+    if (plan) {
+      ctx.status = 200; // OK
+      ctx.body = plan.Courses;
+    } else {
+      ctx.status = 404; // No encontrado
+      ctx.body = { message: 'Plan no encontrado' };
+    }
+  } catch (error) {
+    console.error(error);
+    ctx.status = 500; // Error interno del servidor
+    ctx.body = { message: 'Error interno del servidor' };
+  }
 });
 
 module.exports = router;
