@@ -15,7 +15,7 @@ module.exports = {
       user_id: {
         type: Sequelize.INTEGER,
         references: {
-          model: 'users', // Corrected to lowercase 'users'
+          model: 'Users', // Corrected to lowercase 'users'
           key: 'id'
         },
         onDelete: 'CASCADE'

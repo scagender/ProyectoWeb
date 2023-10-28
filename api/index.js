@@ -8,7 +8,7 @@ const app = new Koa();
 const router = new Router();
 const PORT = 3000;
 
-router.use('/', apiRouter.routes());
+router.use('/api', apiRouter.routes());
 
 app.use(bodyParser());
 app.use(router.routes());
