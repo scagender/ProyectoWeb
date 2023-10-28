@@ -7,24 +7,24 @@ module.exports = (sequelize, DataTypes) => {
     credits: {
       type: DataTypes.INTEGER
     },
-    owner: {
+    user_id: {  // Changed from 'owner' to 'user_id'
       type: DataTypes.INTEGER,
       references: {
         model: 'Users',
         key: 'id'
       }
     }
-  })
+  });
 
   Course.associate = (models) => {
     Course.belongsTo(models.User, {
-      foreignKey: 'userId'
-    })
+      foreignKey: 'user_id'  // Updated foreignKey
+    });
     Course.belongsToMany(models.Plan, {
       through: 'plan_courses',
       foreignKey: 'course_id'
-    })
-  }
+    });
+  };
 
-  return Course
-}
+  return Course;
+};

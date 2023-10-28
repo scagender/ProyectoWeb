@@ -78,9 +78,16 @@ router.put('/users/:id', async (ctx) => {
 // COURSES
 
 router.get('/courses', async (ctx) => {
-  const courses = await Course.findAll()
-  ctx.body = courses
-})
+  const courses = await Course.findAll({
+    attributes: ['id', 'code', 'credits'],
+    include: [{
+      model: User, // Make sure you have imported the User model at the top of your file
+      attributes: ['id']  // Adjust the attributes as needed
+    }]
+  });
+  ctx.body = courses;
+});
+
 
 // POST /courses (Crear un nuevo curso)
 router.post('/create-courses', async (ctx) => {

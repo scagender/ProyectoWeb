@@ -1,5 +1,3 @@
-'use strict'
-
 module.exports = {
   async up (queryInterface, Sequelize) {
     await queryInterface.createTable('Courses', {
@@ -21,19 +19,29 @@ module.exports = {
         type: Sequelize.INTEGER,
         allowNull: false
       },
-      owner: {
+      user_id: {  // Changed from 'owner' to 'user_id'
         allowNull: false,
         type: Sequelize.INTEGER,
         references: {
-          model: 'Users', // Note the lowercase 'users'
+          model: 'Users',
           key: 'id'
         },
-        onDelete: 'CASCADE' // Optional: If a user is deleted, related courses will also be deleted.
+        onDelete: 'CASCADE'
+      },
+      createdAt: {
+        allowNull: false,
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.literal('NOW()')
+      },
+      updatedAt: {
+        allowNull: false,
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.literal('NOW()')
       }
-    })
+    });
   },
 
   async down (queryInterface, Sequelize) {
-    await queryInterface.dropTable('Courses')
+    await queryInterface.dropTable('Courses');
   }
-}
+};
