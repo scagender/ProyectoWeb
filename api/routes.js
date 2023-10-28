@@ -2,12 +2,30 @@ const Router = require('koa-router');
 const { User, Course, Plan } = require('./models'); 
 
 const router = new Router();
+// USERS
 
 router.get('/users', async (ctx) => {
   console.log("GET /users")
   const users = await User.findAll();
   ctx.body = users;
 });
+
+router.post('/create-users', async (ctx) => {
+  try{
+      console.log(ctx.request.body)
+      const user = await User.create(ctx.request.body);
+      ctx.body = user;
+      ctx.status = 201;
+  } catch (error) {
+    console.log(error)
+    ctx.body = error;
+    ctx.status = 400;
+
+  }
+});
+
+// COURSES
+
 
 router.get('/courses', async (ctx) => {
   console.log("GET /courses")
