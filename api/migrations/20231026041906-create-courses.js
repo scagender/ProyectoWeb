@@ -23,13 +23,18 @@ module.exports = {
       },
       owner: {
         allowNull: false,
-        type: Sequelize.STRING,
-        allowNull: false
+        type: Sequelize.INTEGER,
+        references: {
+          model: 'users', // Note the lowercase 'users'
+          key: 'id'
+        },
+        onDelete: 'CASCADE' // Optional: If a user is deleted, related courses will also be deleted.
       }
+      
     });
   },
 
   async down (queryInterface, Sequelize) {
-    await queryInterface.dropTable('users');
+    await queryInterface.dropTable('courses');
   }
 };

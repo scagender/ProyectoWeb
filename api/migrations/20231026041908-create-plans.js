@@ -15,11 +15,12 @@ module.exports = {
       user_id: {
         type: Sequelize.INTEGER,
         references: {
-          model: 'Users',
+          model: 'users', // Corrected to lowercase 'users'
           key: 'id'
         },
-        onDelete: 'CASCADE' // Si un usuario se elimina se eliminan entradas de aca que lo referencien
-      },
+        onDelete: 'CASCADE'
+      }
+      ,
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
