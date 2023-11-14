@@ -8,6 +8,14 @@ const app = new Koa()
 const router = new Router()
 const PORT = 3000
 
+const cors = require('@koa/cors')
+
+// Opción 1: Habilitar CORS para todos los orígenes
+app.use(cors())
+
+// Opción 2: Habilitar CORS para un origen específico
+app.use(cors({ origin: 'http://localhost:5173' }))
+
 router.use('/api', apiRouter.routes())
 
 app.use(bodyParser())
