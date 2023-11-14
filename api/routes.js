@@ -1,5 +1,6 @@
 const Router = require('koa-router')
 const { User, Course, Plan } = require('./models')
+const bcrypt = require('bcrypt')
 
 const router = new Router()
 
@@ -19,8 +20,20 @@ router.get('/users', async (ctx) => {
 
 router.post('/create-users', async (ctx) => {
   try {
-    console.log(ctx.request.body)
-    const user = await User.create(ctx.request.body)
+    const { username, email, password } = ctx.request.body
+    // Verificar si el usuario ya está registrado
+    const existingUser = await User.findOne({ where: { email } })
+    if (existingUser) {
+      ctx.status = 409
+      ctx.body = { message: 'El email ya está registrado' }
+      return
+    }
+    const hashedPassword = await bcrypt.hash(password, 10)
+    const user = await User.create({
+      username,
+      email,
+      hashedPassword
+    })
     ctx.body = user
     ctx.status = 201
   } catch (error) {
@@ -32,21 +45,35 @@ router.post('/create-users', async (ctx) => {
 
 // DELETE /users/:id
 router.delete('/users/:id', async (ctx) => {
-  const userId = ctx.params.id
-
   try {
-    // Buscar y eliminar el usuario por su ID
-    const user = await User.findByPk(userId)
+    const { username, email, password } = ctx.request.body
+
+    // Buscar el usuario por su correo electrónico
+    const user = await User.findOne({ where: { email } })
+
+    // Verificar si el usuario existe
     if (!user) {
-      ctx.status = 404
+      ctx.status = 404 // No encontrado
       ctx.body = { message: 'Usuario no encontrado' }
-    } else {
-      await user.destroy()
-      ctx.status = 204 // No Content
+      return
     }
+
+    // Verificar la contraseña proporcionada
+    const isPasswordValid = await bcrypt.compare(password, user.password)
+
+    if (!isPasswordValid) {
+      ctx.status = 401 // No autorizado
+      ctx.body = { message: 'Contraseña incorrecta' }
+      return
+    }
+
+    // Eliminar el usuario
+    await user.destroy()
+
+    ctx.status = 204 // Sin contenido (éxito, pero no hay respuesta)
   } catch (error) {
     console.error(error)
-    ctx.status = 500
+    ctx.status = 500 // Error interno del servidor
     ctx.body = { message: 'Error interno del servidor' }
   }
 })
