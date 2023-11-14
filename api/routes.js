@@ -82,12 +82,11 @@ router.get('/courses', async (ctx) => {
     attributes: ['id', 'code', 'credits'],
     include: [{
       model: User, // Make sure you have imported the User model at the top of your file
-      attributes: ['id']  // Adjust the attributes as needed
+      attributes: ['id'] // Adjust the attributes as needed
     }]
-  });
-  ctx.body = courses;
-});
-
+  })
+  ctx.body = courses
+})
 
 // POST /courses (Crear un nuevo curso)
 router.post('/create-courses', async (ctx) => {
