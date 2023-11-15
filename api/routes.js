@@ -18,6 +18,66 @@ router.get('/users', async (ctx) => {
   }
 })
 
+// LOGIN DE USER
+router.post('/login', async (ctx) => {
+  try {
+    const { email, password } = ctx.request.body
+
+    if (!email || !password) {
+      ctx.status = 400 // Bad Request
+      ctx.body = { message: 'Correo electrónico o contraseña faltante' }
+      return
+    }
+    // Utiliza el método findOne de Sequelize para buscar un usuario por email
+    const user = await User.findOne({ where: { email: email } })
+
+    if (user) {
+      const checkedPassword = await bcrypt.compare(password, user.password)
+      if (checkedPassword) {
+        ctx.status = 200 // OK
+        ctx.body = user
+      } else {
+        ctx.status = 401 // No autorizado
+        ctx.body = { message: 'Contraseña incorrecta' }
+      }
+    } else {
+      ctx.status = 404 // No encontrado
+      ctx.body = { message: 'Usuario no encontrado' }
+    }
+  } catch (error) {
+    console.error(error)
+    ctx.status = 500 // Error interno del servidor
+    ctx.body = { message: 'Error interno del servidor' }
+  }
+})
+
+// GET USER CON EMAIL
+router.get('/users/:userEmail', async (ctx) => {
+  const { userEmail } = ctx.params
+
+  try {
+    // Utiliza el método findOne de Sequelize para buscar un usuario por email
+    const user = await User.findOne({
+      where: {
+        email: userEmail
+      }
+    })
+
+    if (user) {
+      ctx.status = 200 // OK
+      ctx.body = user
+    } else {
+      ctx.status = 404 // No encontrado
+      ctx.body = { message: 'Usuario no encontrado' }
+    }
+  } catch (error) {
+    console.error(error)
+    ctx.status = 500 // Error interno del servidor
+    ctx.body = { message: 'Error interno del servidor' }
+  }
+})
+
+// CREATE USER
 router.post('/create-users', async (ctx) => {
   try {
     const { username, email, password } = ctx.request.body
@@ -32,7 +92,7 @@ router.post('/create-users', async (ctx) => {
     const user = await User.create({
       username,
       email,
-      hashedPassword
+      password: hashedPassword
     })
     ctx.body = user
     ctx.status = 201
@@ -43,21 +103,23 @@ router.post('/create-users', async (ctx) => {
   }
 })
 
-// DELETE /users/:id
-router.delete('/users/:id', async (ctx) => {
+// DELETE USER CON EMAIL Y PASSWORD
+router.delete('/delete-user', async (ctx) => {
+  const { email, password } = ctx.request.body
+
   try {
-    const { username, email, password } = ctx.request.body
+    // Utiliza el método findOne de Sequelize para buscar un usuario por email
+    const user = await User.findOne({
+      where: {
+        email: email
+      }
+    })
 
-    // Buscar el usuario por su correo electrónico
-    const user = await User.findOne({ where: { email } })
-
-    // Verificar si el usuario existe
     if (!user) {
       ctx.status = 404 // No encontrado
       ctx.body = { message: 'Usuario no encontrado' }
       return
     }
-
     // Verificar la contraseña proporcionada
     const isPasswordValid = await bcrypt.compare(password, user.password)
 
@@ -78,26 +140,34 @@ router.delete('/users/:id', async (ctx) => {
   }
 })
 
-router.put('/users/:id', async (ctx) => {
-  const userId = ctx.params.id
-
+// UPDATE USER CON EMAIL Y PASSWORD
+router.put('/update-user', async (ctx) => {
+  const { email, password, updatedUserData } = ctx.request.body
   try {
-    // Obtén los datos de usuario actualizados del cuerpo de la solicitud
-    const updatedUserData = ctx.request.body
-
-    // Buscar y actualizar el usuario por su ID
-    const user = await User.findByPk(userId)
+    // Utiliza el método findOne de Sequelize para buscar un usuario por email
+    const user = await User.findOne({
+      where: {
+        email: email
+      }
+    })
     if (!user) {
       ctx.status = 404
       ctx.body = { message: 'Usuario no encontrado' }
-    } else {
-      await user.update(updatedUserData) // Actualiza el usuario con los nuevos datos
-      ctx.status = 200 // OK
-      ctx.body = user // Devuelve el usuario actualizado
+      return
     }
+    // Verificar la contraseña proporcionada
+    const isPasswordValid = await bcrypt.compare(password, user.password)
+    if (!isPasswordValid) {
+      ctx.status = 401 // No autorizado
+      ctx.body = { message: 'Contraseña incorrecta' }
+      return
+    }
+    await user.update(updatedUserData)
+    ctx.status = 200 // OK
+    ctx.body = user // Devuelve el usuario actualizado
   } catch (error) {
     console.error(error)
-    ctx.status = 500
+    ctx.status = 500 // Error interno del servidor
     ctx.body = { message: 'Error interno del servidor' }
   }
 })
