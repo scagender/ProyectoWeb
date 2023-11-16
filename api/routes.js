@@ -5,6 +5,42 @@ const bcrypt = require('bcrypt')
 const router = new Router()
 const jwt = require('jsonwebtoken')
 
+const verifyToken = async (ctx, next) => {
+  const accessTokenHeader = ctx.headers['authorization']
+
+  if (!accessTokenHeader || !accessTokenHeader.startsWith('Bearer ')) {
+    ctx.status = 401
+    ctx.body = 'Access denied: Token missing or invalid format'
+    console.log('No hay token o formato inválido')
+    return
+  }
+
+  const accessToken = accessTokenHeader.split(' ')[1]
+
+  try {
+    const user = await jwt.verify(accessToken, process.env.JWT_SECRET)
+    ctx.state.user = user
+    await next()
+  } catch (err) {
+    console.error('Token verification error:', err)
+    ctx.status = 401
+    ctx.body = 'Access denied: Invalid token'
+  }
+}
+
+router.get('/plans/:userId', verifyToken, async (ctx) => {
+  try {
+    const { userId } = ctx.params
+    const userPlans = await Plan.findAll({ where: { user_id: userId } })
+    ctx.status = 200 // OK
+    ctx.body = userPlans
+  } catch (error) {
+    console.error('Error retrieving user plans:', error)
+    ctx.status = 500 // Internal Server Error
+    ctx.body = { message: 'Internal Server Error' }
+  }
+})
+
 // USERS
 
 router.get('/users', async (ctx) => {
@@ -35,7 +71,7 @@ router.post('/login', async (ctx) => {
     if (user) {
       const checkedPassword = await bcrypt.compare(password, user.password)
       if (checkedPassword) {
-        const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' })
+        const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '5m' })
         ctx.status = 200 // OK
         user.token = token
         user.password = undefined
@@ -73,6 +109,27 @@ router.get('/users/:userEmail', async (ctx) => {
       }
     })
 
+    if (user) {
+      ctx.status = 200 // OK
+      ctx.body = user
+    } else {
+      ctx.status = 404 // No encontrado
+      ctx.body = { message: 'Usuario no encontrado' }
+    }
+  } catch (error) {
+    console.error(error)
+    ctx.status = 500 // Error interno del servidor
+    ctx.body = { message: 'Error interno del servidor' }
+  }
+})
+
+// TODO: NO FUNCIONA
+router.get('/users/:id', async (ctx) => {
+  const { id } = ctx.params
+
+  try {
+    // Buscar y eliminar el usuario por su ID
+    const user = await User.findByPk(id)
     if (user) {
       ctx.status = 200 // OK
       ctx.body = user
@@ -333,7 +390,7 @@ router.delete('/plans/:id', async (ctx) => {
   }
 })
 
-router.get('/plans/:userId', async (ctx) => {
+router.get('/plans/:userId', verifyToken, async (ctx) => {
   try {
     const { userId } = ctx.params
     const userPlans = await Plan.findAll({ where: { user_id: userId } })
