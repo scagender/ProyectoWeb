@@ -3,6 +3,7 @@ const { User, Course, Plan } = require('./models')
 const bcrypt = require('bcrypt')
 
 const router = new Router()
+const jwt = require('jsonwebtoken')
 
 // USERS
 
@@ -18,7 +19,7 @@ router.get('/users', async (ctx) => {
   }
 })
 
-// LOGIN DE USER
+// LOGIN DE USER  ------->USADO
 router.post('/login', async (ctx) => {
   try {
     const { email, password } = ctx.request.body
@@ -34,8 +35,17 @@ router.post('/login', async (ctx) => {
     if (user) {
       const checkedPassword = await bcrypt.compare(password, user.password)
       if (checkedPassword) {
+        const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' })
         ctx.status = 200 // OK
-        ctx.body = user
+        user.token = token
+        user.password = undefined
+        const options = {
+          expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3),
+          httpOnly: true,
+          sameSite: 'None' // Set the SameSite attribute to 'None'
+        }
+        ctx.cookies.set('token', token, options)
+        ctx.body = { user, token }
       } else {
         ctx.status = 401 // No autorizado
         ctx.body = { message: 'Contraseña incorrecta' }
@@ -77,7 +87,7 @@ router.get('/users/:userEmail', async (ctx) => {
   }
 })
 
-// CREATE USER
+// CREATE USER USADO
 router.post('/create-users', async (ctx) => {
   try {
     const { username, email, password } = ctx.request.body
@@ -94,6 +104,9 @@ router.post('/create-users', async (ctx) => {
       email,
       password: hashedPassword
     })
+    const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' })
+    user.token = token
+    user.password = undefined
     ctx.body = user
     ctx.status = 201
   } catch (error) {
