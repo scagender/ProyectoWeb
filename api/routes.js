@@ -125,7 +125,7 @@ router.get('/users/:userEmail', async (ctx) => {
 
 // TODO: NO FUNCIONA
 router.get('/users/:id', async (ctx) => {
-  const { id } = ctx.params
+  const { id } = ctx.params.id
 
   try {
     // Buscar y eliminar el usuario por su ID
@@ -173,11 +173,18 @@ router.post('/create-users', async (ctx) => {
   }
 })
 
-// DELETE USER CON EMAIL Y PASSWORD
-router.delete('/delete-user', async (ctx) => {
+// DELETE USER CON JWT, EMAIL Y PASSWORD
+router.delete('/delete-user', verifyToken, async (ctx) => {
   const { email, password } = ctx.request.body
 
   try {
+    // Check if the authenticated user is the same as the user to be deleted
+    if (ctx.state.user.email !== email) {
+      ctx.status = 403 // Forbidden
+      ctx.body = { message: 'Acción no permitida' }
+      return
+    }
+
     // Utiliza el método findOne de Sequelize para buscar un usuario por email
     const user = await User.findOne({
       where: {
@@ -190,6 +197,7 @@ router.delete('/delete-user', async (ctx) => {
       ctx.body = { message: 'Usuario no encontrado' }
       return
     }
+
     // Verificar la contraseña proporcionada
     const isPasswordValid = await bcrypt.compare(password, user.password)
 
@@ -210,43 +218,57 @@ router.delete('/delete-user', async (ctx) => {
   }
 })
 
-// UPDATE USER CON EMAIL Y PASSWORD
-router.put('/update-user', async (ctx) => {
-  const { email, password, updatedUserData } = ctx.request.body
+
+// UPDATE USER WITH JWT, EMAIL, AND PASSWORD
+router.put('/update-user', verifyToken, async (ctx) => {
+  const { email, password, updatedUserData } = ctx.request.body;
+
   try {
-    // Utiliza el método findOne de Sequelize para buscar un usuario por email
+    // Check if the authenticated user is the same as the user to be updated
+    if (ctx.state.user.email !== email) {
+      ctx.status = 403; // Forbidden
+      ctx.body = { message: 'Acción no permitida' };
+      return;
+    }
+
+    // Use Sequelize's findOne method to find a user by email
     const user = await User.findOne({
       where: {
         email: email
       }
-    })
+    });
+
     if (!user) {
-      ctx.status = 404
-      ctx.body = { message: 'Usuario no encontrado' }
-      return
+      ctx.status = 404; // Not Found
+      ctx.body = { message: 'Usuario no encontrado' };
+      return;
     }
-    // Verificar la contraseña proporcionada
-    const isPasswordValid = await bcrypt.compare(password, user.password)
+
+    // Verify the provided password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      ctx.status = 401 // No autorizado
-      ctx.body = { message: 'Contraseña incorrecta' }
-      return
+      ctx.status = 401; // Unauthorized
+      ctx.body = { message: 'Contraseña incorrecta' };
+      return;
     }
+
     if (updatedUserData && updatedUserData.password) {
-      // Hash de la nueva contraseña
-      const hashedPassword = await bcrypt.hash(updatedUserData.password, 10)
-      // Actualizar la contraseña en el objeto updatedUserData
-      updatedUserData.password = hashedPassword
+      // Hash the new password
+      const hashedPassword = await bcrypt.hash(updatedUserData.password, 10);
+      // Update the password in the updatedUserData object
+      updatedUserData.password = hashedPassword;
     }
-    await user.update(updatedUserData)
-    ctx.status = 200 // OK
-    ctx.body = user // Devuelve el usuario actualizado
+
+    await user.update(updatedUserData);
+    ctx.status = 200; // OK
+    ctx.body = user; // Return the updated user
   } catch (error) {
-    console.error(error)
-    ctx.status = 500 // Error interno del servidor
-    ctx.body = { message: 'Error interno del servidor' }
+    console.error(error);
+    ctx.status = 500; // Internal Server Error
+    ctx.body = { message: 'Error interno del servidor' };
   }
-})
+});
+
 
 // COURSES
 
@@ -262,38 +284,61 @@ router.get('/courses', async (ctx) => {
 })
 
 // POST /courses (Crear un nuevo curso)
-router.post('/create-courses', async (ctx) => {
+router.post('/create-courses', verifyToken, async (ctx) => {
   try {
-    const courseData = ctx.request.body
-    const newCourse = await Course.create(courseData)
-    ctx.status = 201 // Creado
-    ctx.body = newCourse
+    // Extract the course data from the request body
+    const { code, credits } = ctx.request.body;
+
+    // Extract the user ID from the JWT token
+    const userId = ctx.state.user.userId;
+
+    // Create the course with the user ID from the JWT token
+    const newCourse = await Course.create({
+      code,
+      credits,
+      user_id: userId // Set the user_id to the authenticated user's ID
+    });
+
+    ctx.status = 201; // Created
+    ctx.body = newCourse;
   } catch (error) {
-    console.error(error)
-    ctx.status = 400 // Bad Request
-    ctx.body = { message: 'Error al crear el curso' }
+    console.error(error);
+    ctx.status = 400; // Bad Request
+    ctx.body = { message: 'Error al crear el curso' };
   }
-})
+});
+
 
 // DELETE /courses/:id (Eliminar un curso por su ID)
-router.delete('/courses/:id', async (ctx) => {
-  const courseId = ctx.params.id
+router.delete('/courses/:id', verifyToken, async (ctx) => {
+  const courseId = ctx.params.id;
+  const userId = ctx.state.user.userId; // User ID from the JWT token
 
   try {
-    const course = await Course.findByPk(courseId)
+    const course = await Course.findByPk(courseId);
+
     if (!course) {
-      ctx.status = 404 // No Encontrado
-      ctx.body = { message: 'Curso no encontrado' }
-    } else {
-      await course.destroy()
-      ctx.status = 204 // Sin Contenido
+      ctx.status = 404; // Not Found
+      ctx.body = { message: 'Curso no encontrado' };
+      return;
     }
+
+    // Check if the course belongs to the authenticated user
+    if (course.user_id !== userId) {
+      ctx.status = 403; // Forbidden
+      ctx.body = { message: 'No autorizado para eliminar este curso' };
+      return;
+    }
+
+    await course.destroy();
+    ctx.status = 204; // No Content
   } catch (error) {
-    console.error(error)
-    ctx.status = 500 // Error Interno del Servidor
-    ctx.body = { message: 'Error al eliminar el curso' }
+    console.error(error);
+    ctx.status = 500; // Internal Server Error
+    ctx.body = { message: 'Error al eliminar el curso' };
   }
-})
+});
+
 
 // PUT /courses/:id
 router.put('/courses/:id', async (ctx) => {
