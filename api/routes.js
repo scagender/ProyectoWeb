@@ -232,6 +232,12 @@ router.put('/update-user', async (ctx) => {
       ctx.body = { message: 'Contraseña incorrecta' }
       return
     }
+    if (updatedUserData && updatedUserData.password) {
+      // Hash de la nueva contraseña
+      const hashedPassword = await bcrypt.hash(updatedUserData.password, 10)
+      // Actualizar la contraseña en el objeto updatedUserData
+      updatedUserData.password = hashedPassword
+    }
     await user.update(updatedUserData)
     ctx.status = 200 // OK
     ctx.body = user // Devuelve el usuario actualizado
