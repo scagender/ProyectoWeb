@@ -174,7 +174,7 @@ router.post('/create-users', async (ctx) => {
 })
 
 // DELETE USER CON EMAIL Y PASSWORD
-router.delete('/delete-user', async (ctx) => {
+router.delete('/delete-user', verifyToken, async (ctx) => {
   const { email, password } = ctx.request.body
 
   try {
@@ -211,7 +211,7 @@ router.delete('/delete-user', async (ctx) => {
 })
 
 // UPDATE USER CON EMAIL Y PASSWORD
-router.put('/update-user', async (ctx) => {
+router.put('/update-user', verifyToken, async (ctx) => {
   const { email, password, updatedUserData } = ctx.request.body
   try {
     // Utiliza el método findOne de Sequelize para buscar un usuario por email
