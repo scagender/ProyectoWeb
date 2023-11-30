@@ -1,7 +1,8 @@
 const Router = require('koa-router')
 const { User, Course, Plan } = require('./models')
 const bcrypt = require('bcrypt')
-
+const fs = require('fs').promises;
+const path = require('path');
 const router = new Router()
 const jwt = require('jsonwebtoken')
 
@@ -147,31 +148,38 @@ router.get('/users/:id', async (ctx) => {
 // CREATE USER USADO
 router.post('/create-users', async (ctx) => {
   try {
-    const { username, email, password } = ctx.request.body
-    // Verificar si el usuario ya está registrado
-    const existingUser = await User.findOne({ where: { email } })
+    const { username, email, password } = ctx.request.body;
+    const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      ctx.status = 409
-      ctx.body = { message: 'El email ya está registrado' }
-      return
+      ctx.status = 409;
+      ctx.body = { message: 'El email ya está registrado' };
+      return;
     }
-    const hashedPassword = await bcrypt.hash(password, 10)
+
+    const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({
       username,
       email,
       password: hashedPassword
-    })
-    const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' })
-    user.token = token
-    user.password = undefined
-    ctx.body = user
-    ctx.status = 201
+    });
+
+    // Check if the email is planner@uc.cl
+    if (email === 'planner@uc.cl') {
+      await create_default_mallas(user.id);
+    }
+
+    const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    user.token = token;
+    user.password = undefined;
+    ctx.body = user;
+    ctx.status = 201;
+
   } catch (error) {
-    console.log(error)
-    ctx.body = error
-    ctx.status = 400
+    console.log(error);
+    ctx.body = error;
+    ctx.status = 400;
   }
-})
+});
 
 // DELETE USER CON EMAIL Y PASSWORD
 router.delete('/delete-user', verifyToken, async (ctx) => {
@@ -469,5 +477,32 @@ router.get('/plans/:planId/courses', async (ctx) => {
     ctx.body = { message: 'Error interno del servidor' }
   }
 })
+
+
+
+async function create_default_mallas(userId) {
+  const mallas = ['ingenieriaDeSoftware.json', 'ingenieriaIndustrial.json', 'ingenieriaMatematica.json'];
+
+  for (const malla of mallas) {
+    try {
+      const data = await fs.readFile(path.join(__dirname, malla), 'utf8');
+      const courses = JSON.parse(data);
+
+      for (const [semester, courseList] of Object.entries(courses)) {
+        for (const course of courseList) {
+          await Plan.create({
+            malla: semester,
+            user_id: userId,
+            name: course.name,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error creando mallas:', error);
+    }
+  }
+}
+
+
 
 module.exports = router
