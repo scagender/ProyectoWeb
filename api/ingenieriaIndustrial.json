@@ -1,0 +1,89 @@
+{
+    "Semestre 1": [
+        {
+            "sigla": "MAT1203",
+            "name": "Algebra Lineal",
+            "credits": 10
+        },
+        {
+            "sigla": "MAT1610",
+            "name": "Calculo 1",
+            "credits": 10
+        },
+        {
+            "sigla": "QUIM100E",
+            "name": "Química",
+            "credits": 10
+        },
+        {
+            "sigla": "FIL188",
+            "name": "Ética para Ingeniería",
+            "credits": 10
+        }
+    ],
+    "Semestre 2": [
+        {
+            "sigla": "FIS0154",
+            "name": "Laboratorio de Dinámica",
+            "credits": 0
+        },
+        {
+            "sigla": "ICE1514",
+            "name": "Dinámica",
+            "credits": 10
+        },
+        {
+            "sigla": "MAT1620",
+            "name": "Cálculo II",
+            "credits": 10
+        },
+        {
+            "sigla": "ICS1513",
+            "name": "Introducción a la economía",
+            "credits": 10
+        },
+        {
+            "sigla": "IIC1103",
+            "name": "Introducción a la programación",
+            "credits": 10
+        },
+        {
+            "sigla": "LET0003",
+            "name": "Desarrollo de habilidades comunicativas",
+            "credits": 10
+        }
+    ],
+
+    "Semestre 3": [
+        {
+            "sigla": "FIS1523",
+            "name": "Termodinámica",
+            "credits": 0
+        },
+        {
+            "sigla": "FIS0152",
+            "name": "Laboratorio de Termodinámica",
+            "credits": 10
+        },
+        {
+            "sigla": "MAT1630",
+            "name": "Cálculo III",
+            "credits": 10
+        },
+        {
+            "sigla": "ICS1513",
+            "name": "Ecuaciones Diferenciales",
+            "credits": 10
+        },
+        {
+            "sigla": "ICS1113",
+            "name": "Optimización",
+            "credits": 10
+        },
+        {
+            "sigla": "X",
+            "name": "OFG Electivo",
+            "credits": 10
+        }
+    ]
+}
