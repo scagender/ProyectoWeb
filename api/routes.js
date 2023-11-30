@@ -275,103 +275,6 @@ router.put('/update-user', verifyToken, async (ctx) => {
   }
 })
 
-// COURSES
-
-router.get('/courses', async (ctx) => {
-  const courses = await Course.findAll({
-    attributes: ['id', 'code', 'credits'],
-    include: [{
-      model: User, // Make sure you have imported the User model at the top of your file
-      attributes: ['id'] // Adjust the attributes as needed
-    }]
-  })
-  ctx.body = courses
-})
-
-// POST /courses (Crear un nuevo curso)
-router.post('/create-courses', verifyToken, async (ctx) => {
-  try {
-    // Extract the course data from the request body
-    const { code, credits } = ctx.request.body
-
-    // Extract the user ID from the JWT token
-    const userId = ctx.state.user.userId
-
-    // Create the course with the user ID from the JWT token
-    const newCourse = await Course.create({
-      code,
-      credits,
-      user_id: userId // Set the user_id to the authenticated user's ID
-    })
-
-    ctx.status = 201 // Created
-    ctx.body = newCourse
-  } catch (error) {
-    console.error(error)
-    ctx.status = 400 // Bad Request
-    ctx.body = { message: 'Error al crear el curso' }
-  }
-})
-
-// DELETE /courses/:id (Eliminar un curso por su ID)
-router.delete('/courses/:id', verifyToken, async (ctx) => {
-  const courseId = ctx.params.id
-  const userId = ctx.state.user.userId // User ID from the JWT token
-
-  try {
-    const course = await Course.findByPk(courseId)
-
-    if (!course) {
-      ctx.status = 404 // Not Found
-      ctx.body = { message: 'Curso no encontrado' }
-      return
-    }
-
-    // Check if the course belongs to the authenticated user
-    if (course.user_id !== userId) {
-      ctx.status = 403 // Forbidden
-      ctx.body = { message: 'No autorizado para eliminar este curso' }
-      return
-    }
-
-    await course.destroy()
-    ctx.status = 204 // No Content
-  } catch (error) {
-    console.error(error)
-    ctx.status = 500 // Internal Server Error
-    ctx.body = { message: 'Error al eliminar el curso' }
-  }
-})
-
-// PUT /courses/:id
-router.put('/courses/:id', async (ctx) => {
-  const courseId = ctx.params.id
-
-  try {
-    // Obtén los datos de curso actualizados del cuerpo de la solicitud
-    const updatedCourseData = ctx.request.body
-
-    // Buscar y actualizar el curso por su ID
-    const course = await Course.findByPk(courseId)
-    if (!course) {
-      ctx.status = 404
-      ctx.body = { message: 'Curso no encontrado' }
-    } else {
-      // Actualiza el campo 'credits' con el nuevo valor
-      course.credits = updatedCourseData.credits
-      // Guarda los cambios en la base de datos
-      await course.save()
-
-      ctx.status = 200 // OK
-      ctx.body = course // Devuelve el curso actualizado
-    }
-  } catch (error) {
-    console.error(error)
-    ctx.status = 500
-    ctx.body = { message: 'Error interno del servidor' }
-  }
-})
-
 // PLANS
 
 router.get('/plans', async (ctx) => {
@@ -481,28 +384,28 @@ router.get('/plans/:planId/courses', async (ctx) => {
 
 
 async function create_default_mallas(userId) {
-  const mallas = ['ingenieriaDeSoftware.json', 'ingenieriaIndustrial.json', 'ingenieriaMatemática.json'];
+  const mallas = [
+    { filename: 'ingenieriaDeSoftware.json', name: 'Ingenieria De Software' },
+    { filename: 'ingenieriaIndustrial.json', name: 'Ingenieria Industrial' },
+    { filename: 'ingenieriaMecanica.json', name: 'Ingenieria Mecanica' }
+  ];
 
   for (const malla of mallas) {
     try {
-      const data = await fs.readFile(path.join(__dirname, malla), 'utf8');
+      const data = await fs.readFile(path.join(__dirname, malla.filename), 'utf8');
       const courses = JSON.parse(data);
-      console.log(courses)
+      await Plan.create({
+        malla: JSON.stringify(courses),
+        user_id: userId,
+        name: malla.name,
+      });
 
-      for (const [semester, courseList] of Object.entries(courses)) {
-        for (const course of courseList) {
-          await Plan.create({
-            malla: semester,
-            user_id: userId,
-            name: course.name,
-          });
-        }
-      }
     } catch (error) {
       console.error('Error creando mallas:', error);
     }
   }
 }
+
 
 
 

@@ -10,7 +10,7 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       malla: {
-        type: Sequelize.STRING
+        type: Sequelize.TEXT
       },
       name: {
         type: Sequelize.STRING

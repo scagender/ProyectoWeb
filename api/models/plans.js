@@ -1,7 +1,7 @@
 module.exports = (sequelize, DataTypes) => {
   const Plan = sequelize.define('Plan', {
     malla: {
-      type: DataTypes.STRING
+      type: DataTypes.TEXT
     },
     user_id: {
       type: DataTypes.INTEGER,
