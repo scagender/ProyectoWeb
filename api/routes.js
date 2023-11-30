@@ -307,7 +307,6 @@ router.put('/plans/:id', async (ctx) => {
   const planId = ctx.params.id
 
   try {
-    // Obtén los datos de plan actualizados del cuerpo de la solicitud
     const updatedPlanData = ctx.request.body
 
     // Buscar y actualizar el plan por su ID
