@@ -481,12 +481,13 @@ router.get('/plans/:planId/courses', async (ctx) => {
 
 
 async function create_default_mallas(userId) {
-  const mallas = ['ingenieriaDeSoftware.json', 'ingenieriaIndustrial.json', 'ingenieriaMatematica.json'];
+  const mallas = ['ingenieriaDeSoftware.json', 'ingenieriaIndustrial.json', 'ingenieriaMatemática.json'];
 
   for (const malla of mallas) {
     try {
       const data = await fs.readFile(path.join(__dirname, malla), 'utf8');
       const courses = JSON.parse(data);
+      console.log(courses)
 
       for (const [semester, courseList] of Object.entries(courses)) {
         for (const course of courseList) {
