@@ -336,24 +336,34 @@ router.put('/plans/:id', verifyToken, async (ctx) => {
 
 
 // DELETE /plans/:id (Eliminar un plan por su ID)
-router.delete('/plans/:id', async (ctx) => {
-  const planId = ctx.params.id
+router.delete('/plans/:id', verifyToken, async (ctx) => {
+  const planId = ctx.params.id;
 
   try {
-    const plan = await Plan.findByPk(planId)
+    const plan = await Plan.findByPk(planId);
     if (!plan) {
-      ctx.status = 404
-      ctx.body = { message: 'Plan no encontrado' }
-    } else {
-      await plan.destroy()
-      ctx.status = 204 // Sin Contenido
+      ctx.status = 404;
+      ctx.body = { message: 'Plan no encontrado' };
+      return;
     }
+
+    // Check if the authenticated user is the same as the user associated with the plan
+    if (ctx.state.user.user_id !== plan.user_id) {
+      ctx.status = 403; // Forbidden
+      ctx.body = { message: 'Acción no permitida: usted no es el propietario de este plan' };
+      return;
+    }
+
+    // Delete the plan
+    await plan.destroy();
+    ctx.status = 204; // No Content
   } catch (error) {
-    console.error(error)
-    ctx.status = 500
-    ctx.body = { message: 'Error interno del servidor' }
+    console.error(error);
+    ctx.status = 500;
+    ctx.body = { message: 'Error interno del servidor' };
   }
-})
+});
+
 
 router.get('/plans/:userId', verifyToken, async (ctx) => {
   try {
