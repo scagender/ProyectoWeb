@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
   const Plan = sequelize.define('Plan', {
-    semester: {
+    malla: {
       type: DataTypes.STRING
     },
     user_id: {
@@ -9,6 +9,9 @@ module.exports = (sequelize, DataTypes) => {
         model: 'Users',
         key: 'id'
       }
+    },
+    name: {
+      type: DataTypes.STRING
     }
   })
 
