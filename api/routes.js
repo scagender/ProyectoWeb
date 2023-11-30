@@ -28,6 +28,36 @@ const verifyToken = async (ctx, next) => {
   }
 }
 
+const verifyAdminToken = async (ctx, next) => {
+  const accessTokenHeader = ctx.headers['authorization']
+
+  if (!accessTokenHeader || !accessTokenHeader.startsWith('Bearer ')) {
+    ctx.status = 401
+    ctx.body = 'Access denied: Token missing or invalid format'
+    console.log('No hay token o formato inválido')
+    return
+  }
+
+  const accessToken = accessTokenHeader.split(' ')[1]
+
+  try {
+    const user = await jwt.verify(accessToken, process.env.JWT_SECRET)
+    ctx.state.user = user
+    console.log(user.role)
+    if (user.role === 'admin') {
+      // El usuario es un administrador, puedes permitir el acceso a recursos específicos
+      await next()
+    } else {
+      ctx.status = 403 // Forbidden
+      ctx.body = 'Access denied: User is not an admin'
+    }
+  } catch (err) {
+    console.error('Token verification error:', err)
+    ctx.status = 401
+    ctx.body = `Access denied: Invalid token: ${err.message}`
+  }
+}
+// TODO: FALTA PROTEGER TODAS LAS RUTAS
 router.get('/plans/:userId', verifyToken, async (ctx) => {
   try {
     const { userId } = ctx.params
@@ -43,11 +73,20 @@ router.get('/plans/:userId', verifyToken, async (ctx) => {
 
 // USERS
 
-router.get('/users', async (ctx) => {
+router.get('/users', verifyAdminToken, async (ctx) => {
   try {
-    const users = await User.findAll()
-    ctx.status = 200 // OK
-    ctx.body = users
+    // Ahora, puedes acceder al usuario y su rol desde ctx.state.user
+    const { role } = ctx.state.user
+
+    // Verifica el rol antes de realizar la operación
+    if (role === 'admin') {
+      const users = await User.findAll()
+      ctx.status = 200 // OK
+      ctx.body = users
+    } else {
+      ctx.status = 403 // Forbidden
+      ctx.body = 'Access denied: User is not an admin'
+    }
   } catch (error) {
     console.error(error)
     ctx.status = 500 // Error interno del servidor
@@ -71,7 +110,8 @@ router.post('/login', async (ctx) => {
     if (user) {
       const checkedPassword = await bcrypt.compare(password, user.password)
       if (checkedPassword) {
-        const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '5m' })
+        const role = user.email === 'portal@uc.cl' ? 'admin' : 'user'
+        const token = jwt.sign({ userId: user.id, email: user.email, role }, process.env.JWT_SECRET, { expiresIn: '5m' })
         ctx.status = 200 // OK
         user.token = token
         user.password = undefined
@@ -161,7 +201,8 @@ router.post('/create-users', async (ctx) => {
       email,
       password: hashedPassword
     })
-    const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' })
+    const role = user.email === 'portal@uc.cl' ? 'admin' : 'user'
+    const token = jwt.sign({ userId: user.id, email: user.email, role }, process.env.JWT_SECRET, { expiresIn: '1h' })
     user.token = token
     user.password = undefined
     ctx.body = user
