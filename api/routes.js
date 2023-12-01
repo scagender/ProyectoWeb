@@ -1,8 +1,8 @@
 const Router = require('koa-router')
 const { User, Course, Plan } = require('./models')
 const bcrypt = require('bcrypt')
-const fs = require('fs').promises;
-const path = require('path');
+const fs = require('fs').promises
+const path = require('path')
 const router = new Router()
 const jwt = require('jsonwebtoken')
 
@@ -29,26 +29,51 @@ const verifyToken = async (ctx, next) => {
   }
 }
 
-router.get('/plans/:userId', verifyToken, async (ctx) => {
-  try {
-    const { userId } = ctx.params
-    const userPlans = await Plan.findAll({ where: { user_id: userId } })
-    ctx.status = 200 // OK
-    ctx.body = userPlans
-  } catch (error) {
-    console.error('Error retrieving user plans:', error)
-    ctx.status = 500 // Internal Server Error
-    ctx.body = { message: 'Internal Server Error' }
-  }
-})
+const verifyAdminToken = async (ctx, next) => {
+  const accessTokenHeader = ctx.headers['authorization']
 
+  if (!accessTokenHeader || !accessTokenHeader.startsWith('Bearer ')) {
+    ctx.status = 401
+    ctx.body = 'Access denied: Token missing or invalid format'
+    console.log('No hay token o formato inválido')
+    return
+  }
+
+  const accessToken = accessTokenHeader.split(' ')[1]
+
+  try {
+    const user = await jwt.verify(accessToken, process.env.JWT_SECRET)
+    ctx.state.user = user
+    console.log(user.role)
+    if (user.role === 'admin') {
+      // El usuario es un administrador, puedes permitir el acceso a recursos específicos
+      await next()
+    } else {
+      ctx.status = 403 // Forbidden
+      ctx.body = 'Access denied: User is not an admin'
+    }
+  } catch (err) {
+    console.error('Token verification error:', err)
+    ctx.status = 401
+    ctx.body = `Access denied: Invalid token: ${err.message}`
+  }
+}
 // USERS
 
-router.get('/users', async (ctx) => {
+router.get('/users', verifyAdminToken, async (ctx) => {
   try {
-    const users = await User.findAll()
-    ctx.status = 200 // OK
-    ctx.body = users
+    // Ahora, puedes acceder al usuario y su rol desde ctx.state.user
+    const { role } = ctx.state.user
+
+    // Verifica el rol antes de realizar la operación
+    if (role === 'admin') {
+      const users = await User.findAll()
+      ctx.status = 200 // OK
+      ctx.body = users
+    } else {
+      ctx.status = 403 // Forbidden
+      ctx.body = 'Access denied: User is not an admin'
+    }
   } catch (error) {
     console.error(error)
     ctx.status = 500 // Error interno del servidor
@@ -72,7 +97,8 @@ router.post('/login', async (ctx) => {
     if (user) {
       const checkedPassword = await bcrypt.compare(password, user.password)
       if (checkedPassword) {
-        const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '5m' })
+        const role = user.email === 'planner@uc.cl' ? 'admin' : 'user'
+        const token = jwt.sign({ userId: user.id, email: user.email, role }, process.env.JWT_SECRET, { expiresIn: '5m' })
         ctx.status = 200 // OK
         user.token = token
         user.password = undefined
@@ -148,38 +174,37 @@ router.get('/users/:id', async (ctx) => {
 // CREATE USER USADO
 router.post('/create-users', async (ctx) => {
   try {
-    const { username, email, password } = ctx.request.body;
-    const existingUser = await User.findOne({ where: { email } });
+    const { username, email, password } = ctx.request.body
+    const existingUser = await User.findOne({ where: { email } })
     if (existingUser) {
-      ctx.status = 409;
-      ctx.body = { message: 'El email ya está registrado' };
-      return;
+      ctx.status = 409
+      ctx.body = { message: 'El email ya está registrado' }
+      return
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10)
     const user = await User.create({
       username,
       email,
-      password: hashedPassword
-    });
+      hashedPassword
+    })
 
     // Check if the email is planner@uc.cl
     if (email === 'planner@uc.cl') {
-      await create_default_mallas(user.id);
+      await create_default_mallas(user.id)
     }
 
-    const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    user.token = token;
-    user.password = undefined;
-    ctx.body = user;
-    ctx.status = 201;
-
+    const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' })
+    user.token = token
+    user.password = undefined
+    ctx.body = user
+    ctx.status = 201
   } catch (error) {
-    console.log(error);
-    ctx.body = error;
-    ctx.status = 400;
+    console.log(error)
+    ctx.body = error
+    ctx.status = 400
   }
-});
+})
 
 // DELETE USER CON EMAIL Y PASSWORD
 router.delete('/delete-user', verifyToken, async (ctx) => {
@@ -192,7 +217,6 @@ router.delete('/delete-user', verifyToken, async (ctx) => {
       ctx.body = { message: 'Acción no permitida' }
       return
     }
-
     // Utiliza el método findOne de Sequelize para buscar un usuario por email
     const user = await User.findOne({
       where: {
@@ -277,18 +301,6 @@ router.put('/update-user', verifyToken, async (ctx) => {
 
 // PLANS
 
-router.get('/plans', async (ctx) => {
-  try {
-    const plans = await Plan.findAll()
-    ctx.status = 200 // OK
-    ctx.body = plans
-  } catch (error) {
-    console.error(error)
-    ctx.status = 500 // Error interno del servidor
-    ctx.body = { message: 'Error interno del servidor' }
-  }
-})
-
 // POST /plans (Crear un nuevo plan)
 router.post('/create-plans', async (ctx) => {
   try {
@@ -303,22 +315,28 @@ router.post('/create-plans', async (ctx) => {
   }
 })
 
-router.put('/plans/:id', async (ctx) => {
+router.put('/plans/:id', verifyToken, async (ctx) => {
   const planId = ctx.params.id
 
   try {
     const updatedPlanData = ctx.request.body
 
-    // Buscar y actualizar el plan por su ID
     const plan = await Plan.findByPk(planId)
     if (!plan) {
       ctx.status = 404
       ctx.body = { message: 'Plan no encontrado' }
-    } else {
-      await plan.update(updatedPlanData) // Actualiza el plan con los nuevos datos
-      ctx.status = 200 // OK
-      ctx.body = plan // Devuelve el plan actualizado
+      return
     }
+
+    if (ctx.state.user.userId !== plan.user_id) {
+      ctx.status = 403 // Forbidden
+      ctx.body = { message: 'Acción no permitida: usted no es el propietario de este plan' }
+      return
+    }
+
+    await plan.update(updatedPlanData)
+    ctx.status = 200 // OK
+    ctx.body = plan // Return the updated plan
   } catch (error) {
     console.error(error)
     ctx.status = 500
@@ -327,7 +345,7 @@ router.put('/plans/:id', async (ctx) => {
 })
 
 // DELETE /plans/:id (Eliminar un plan por su ID)
-router.delete('/plans/:id', async (ctx) => {
+router.delete('/plans/:id', verifyToken, async (ctx) => {
   const planId = ctx.params.id
 
   try {
@@ -335,10 +353,19 @@ router.delete('/plans/:id', async (ctx) => {
     if (!plan) {
       ctx.status = 404
       ctx.body = { message: 'Plan no encontrado' }
-    } else {
-      await plan.destroy()
-      ctx.status = 204 // Sin Contenido
+      return
     }
+
+    // Check if the authenticated user is the same as the user associated with the plan
+    if (ctx.state.user.userId !== plan.user_id) {
+      ctx.status = 403 // Forbidden
+      ctx.body = { message: 'Acción no permitida: usted no es el propietario de este plan' }
+      return
+    }
+
+    // Delete the plan
+    await plan.destroy()
+    ctx.status = 204 // No Content
   } catch (error) {
     console.error(error)
     ctx.status = 500
@@ -346,83 +373,85 @@ router.delete('/plans/:id', async (ctx) => {
   }
 })
 
-router.get('/plans/:userId', async (ctx) => {
+router.get('/plans', verifyToken, async (ctx) => {
   try {
-    const { userId } = ctx.params;
-    const userPlans = await Plan.findAll({ 
-      where: { user_id: userId }
-    });
+    console.log('Query', ctx.query)
+    const { userId, planId } = ctx.query
+    const adminUserId = await User.findOne({ where: { email: 'planner@uc.cl' } }).then(user => user.id)
+    console.log('GET /plans')
+    console.log('  userId:', userId)
+    console.log('  planId:', planId)
 
-    const formattedPlans = userPlans.map((plan) => {
-      return {
-        id: plan.id,
-        name: plan.name,
-        courses: plan.courses.map((course) => {
-          return {
-            sigla: course.sigla,
-            name: course.name,
-            credits: course.credits,
-          };
-        }),
-      };
-    });
-
-    ctx.status = 200; // OK
-    ctx.body = formattedPlans;
-  } catch (error) {
-    console.error(error);
-    ctx.status = 500; // Error interno del servidor
-    ctx.body = { message: 'Error interno del servidor' };
-  }
-});
-
-router.get('/plans/:planId/courses', async (ctx) => {
-  try {
-    const { planId } = ctx.params
-    const plan = await Plan.findByPk(planId, {
-      include: Course
-    })
-
-    if (plan) {
-      ctx.status = 200 // OK
-      ctx.body = plan.Courses
-    } else {
-      ctx.status = 404 // No encontrado
-      ctx.body = { message: 'Plan no encontrado' }
+    // No se puede pedir user_id y plan_id a la vez
+    if (userId && planId) {
+      ctx.status = 400 // Bad Request
+      ctx.body = { message: 'No se pueden especificar ambos, userId y planId' }
+      return
     }
+    // get by user_id
+    else if (userId) {
+      const plansQuery = { where: { user_id: userId } }
+      // Allow any user to access plans created by the admin
+      if (parseInt(userId, 10) === adminUserId) {
+        delete plansQuery.where.user_id // Remove the user_id filter
+      } else if (ctx.state.user.userId !== parseInt(userId, 10)) {
+        ctx.status = 403
+        ctx.body = { message: 'Acción no permitida: usted no puede ver los planes de este usuario' }
+        return
+      }
+
+      const userPlans = await Plan.findAll(plansQuery)
+      ctx.status = 200
+      ctx.body = userPlans
+    }
+    else if (planId) {
+      const parsedPlanId = parseInt(planId, 10)
+      if (isNaN(parsedPlanId)) {
+        ctx.status = 400 // Bad Request
+        ctx.body = { message: 'planId debe ser un número válido' }
+        return
+      }
+      const plan = await Plan.findByPk(parsedPlanId)
+      console.log('plan: ', plan)
+      if (plan) {
+        ctx.status = 200 // OK
+        ctx.body = plan
+      } else {
+        ctx.status = 404 // Not Found
+        ctx.body = { message: 'Plan no encontrado' }
+      }
+      return
+    }
+
+    ctx.status = 400 // Bad Request
+    ctx.body = { message: 'Debe proporcionar userId o planId' }
   } catch (error) {
     console.error(error)
-    ctx.status = 500 // Error interno del servidor
+    ctx.status = 500 // Internal Server Error
     ctx.body = { message: 'Error interno del servidor' }
   }
 })
-
-
 
 async function create_default_mallas(userId) {
   const mallas = [
     { filename: 'ingenieriaDeSoftware.json', name: 'Ingenieria De Software' },
     { filename: 'ingenieriaIndustrial.json', name: 'Ingenieria Industrial' },
     { filename: 'ingenieriaMecanica.json', name: 'Ingenieria Mecanica' }
-  ];
+  ]
 
   for (const malla of mallas) {
     try {
-      const data = await fs.readFile(path.join(__dirname, malla.filename), 'utf8');
-      const courses = JSON.parse(data);
+      const data = await fs.readFile(path.join(__dirname, malla.filename), 'utf8')
+      const courses = JSON.parse(data)
       await Plan.create({
         malla: JSON.stringify(courses),
         user_id: userId,
-        name: malla.name,
-      });
-
+        name: malla.name
+      })
     } catch (error) {
-      console.error('Error creando mallas:', error);
+      console.error('Error creando mallas:', error)
     }
   }
 }
-
-
-
 
 module.exports = router
