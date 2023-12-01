@@ -1,13 +1,13 @@
 const Router = require('koa-router')
-const { User, Course, Plan } = require('./models')
+const { User, Plan } = require('./models')
 const bcrypt = require('bcrypt')
-const fs = require('fs').promises;
-const path = require('path');
+const fs = require('fs').promises
+const path = require('path')
 const router = new Router()
 const jwt = require('jsonwebtoken')
 
 const verifyToken = async (ctx, next) => {
-  const accessTokenHeader = ctx.headers['authorization']
+  const accessTokenHeader = ctx.headers.authorization
 
   if (!accessTokenHeader || !accessTokenHeader.startsWith('Bearer ')) {
     ctx.status = 401
@@ -30,7 +30,7 @@ const verifyToken = async (ctx, next) => {
 }
 
 const verifyAdminToken = async (ctx, next) => {
-  const accessTokenHeader = ctx.headers['authorization']
+  const accessTokenHeader = ctx.headers.authorization
 
   if (!accessTokenHeader || !accessTokenHeader.startsWith('Bearer ')) {
     ctx.status = 401
@@ -105,7 +105,7 @@ router.post('/login', async (ctx) => {
       return
     }
     // Utiliza el método findOne de Sequelize para buscar un usuario por email
-    const user = await User.findOne({ where: { email: email } })
+    const user = await User.findOne({ where: { email } })
 
     if (user) {
       const checkedPassword = await bcrypt.compare(password, user.password)
@@ -187,37 +187,37 @@ router.get('/users/:id', async (ctx) => {
 // CREATE USER USADO
 router.post('/create-users', async (ctx) => {
   try {
-    const { username, email, password } = ctx.request.body;
-    const existingUser = await User.findOne({ where: { email } });
+    const { username, email, password } = ctx.request.body
+    const existingUser = await User.findOne({ where: { email } })
     if (existingUser) {
-      ctx.status = 409;
-      ctx.body = { message: 'El email ya está registrado' };
-      return;
+      ctx.status = 409
+      ctx.body = { message: 'El email ya está registrado' }
+      return
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10)
     const user = await User.create({
       username,
       email,
       password: hashedPassword
-    });
+    })
 
     // Check if the email is planner@uc.cl
     if (email === 'planner@uc.cl') {
-      await create_default_mallas(user.id);
+      await createDefaultMallas(user.id)
     }
 
-    const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    user.token = token;
-    user.password = undefined;
-    ctx.body = user;
-    ctx.status = 201;
+    const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' })
+    user.token = token
+    user.password = undefined
+    ctx.body = user
+    ctx.status = 201
   } catch (error) {
-    console.log(error);
-    ctx.body = error;
-    ctx.status = 400;
+    console.log(error)
+    ctx.body = error
+    ctx.status = 400
   }
-});
+})
 
 // DELETE USER CON EMAIL Y PASSWORD
 router.delete('/delete-user', verifyToken, async (ctx) => {
@@ -233,7 +233,7 @@ router.delete('/delete-user', verifyToken, async (ctx) => {
     // Utiliza el método findOne de Sequelize para buscar un usuario por email
     const user = await User.findOne({
       where: {
-        email: email
+        email
       }
     })
 
@@ -277,7 +277,7 @@ router.put('/update-user', verifyToken, async (ctx) => {
     // Use Sequelize's findOne method to find a user by email
     const user = await User.findOne({
       where: {
-        email: email
+        email
       }
     })
 
@@ -329,166 +329,156 @@ router.post('/create-plans', async (ctx) => {
 })
 
 router.put('/plans/:id', verifyToken, async (ctx) => {
-  const planId = ctx.params.id;
+  const planId = ctx.params.id
 
   try {
-    const updatedPlanData = ctx.request.body;
+    const updatedPlanData = ctx.request.body
 
-    
-    const plan = await Plan.findByPk(planId);
+    const plan = await Plan.findByPk(planId)
     if (!plan) {
-      ctx.status = 404;
-      ctx.body = { message: 'Plan no encontrado' };
-      return;
+      ctx.status = 404
+      ctx.body = { message: 'Plan no encontrado' }
+      return
     }
 
     if (ctx.state.user.userId !== plan.user_id) {
-      ctx.status = 403; // Forbidden
-      ctx.body = { message: 'Acción no permitida: usted no es el propietario de este plan' };
-      return;
+      ctx.status = 403 // Forbidden
+      ctx.body = { message: 'Acción no permitida: usted no es el propietario de este plan' }
+      return
     }
 
-    
-    await plan.update(updatedPlanData);
-    ctx.status = 200; // OK
-    ctx.body = plan; // Return the updated plan
+    await plan.update(updatedPlanData)
+    ctx.status = 200 // OK
+    ctx.body = plan // Return the updated plan
   } catch (error) {
-    console.error(error);
-    ctx.status = 500;
-    ctx.body = { message: 'Error interno del servidor' };
+    console.error(error)
+    ctx.status = 500
+    ctx.body = { message: 'Error interno del servidor' }
   }
-});
-
+})
 
 // DELETE /plans/:id (Eliminar un plan por su ID)
 router.delete('/plans/:id', verifyToken, async (ctx) => {
-  const planId = ctx.params.id;
+  const planId = ctx.params.id
 
   try {
-    const plan = await Plan.findByPk(planId);
+    const plan = await Plan.findByPk(planId)
     if (!plan) {
-      ctx.status = 404;
-      ctx.body = { message: 'Plan no encontrado' };
-      return;
+      ctx.status = 404
+      ctx.body = { message: 'Plan no encontrado' }
+      return
     }
 
     // Check if the authenticated user is the same as the user associated with the plan
     if (ctx.state.user.userId !== plan.user_id) {
-      ctx.status = 403; // Forbidden
-      ctx.body = { message: 'Acción no permitida: usted no es el propietario de este plan' };
-      return;
+      ctx.status = 403 // Forbidden
+      ctx.body = { message: 'Acción no permitida: usted no es el propietario de este plan' }
+      return
     }
 
     // Delete the plan
-    await plan.destroy();
-    ctx.status = 204; // No Content
+    await plan.destroy()
+    ctx.status = 204 // No Content
   } catch (error) {
-    console.error(error);
-    ctx.status = 500;
-    ctx.body = { message: 'Error interno del servidor' };
+    console.error(error)
+    ctx.status = 500
+    ctx.body = { message: 'Error interno del servidor' }
   }
-});
-
+})
 
 router.get('/plans', verifyToken, async (ctx) => {
   try {
-    console.log("Query", ctx.query)
-    const { userId, planId } = ctx.query;
-    console.log("GET /plans");
-    console.log("  userId:", userId);
-    console.log("  planId:", planId);
-    
+    console.log('Query', ctx.query)
+    const { userId, planId } = ctx.query
+    console.log('GET /plans')
+    console.log('  userId:', userId)
+    console.log('  planId:', planId)
 
     // No se puede pedir user_id y plan_id a la vez
     if (userId && planId) {
-      
-      ctx.status = 400; // Bad Request
-      ctx.body = { message: 'No se pueden especificar ambos, userId y planId' };
-      return;
-    }
-
+      ctx.status = 400 // Bad Request
+      ctx.body = { message: 'No se pueden especificar ambos, userId y planId' }
+      return
     // get by user_id
-    else if (userId) {
+    } else if (userId) {
       // Auth
       if (ctx.state.user.userId !== parseInt(userId, 10)) {
-        console.log("state user_id:", ctx.state.user.userId);
-        console.log("param user:", userId);
-        ctx.status = 403; // Forbidden
-        ctx.body = { message: 'Acción no permitida: usted no puede ver los planes de este usuario' };
-        return;
+        console.log('state user_id:', ctx.state.user.userId)
+        console.log('param user:', userId)
+        ctx.status = 403 // Forbidden
+        ctx.body = { message: 'Acción no permitida: usted no puede ver los planes de este usuario' }
+        return
       }
 
       const userPlans = await Plan.findAll({
         where: { user_id: userId },
         attributes: ['id', 'name', 'createdAt', 'updatedAt'] // Solo se retornan estos datos
-      });
-      ctx.status = 200; // OK
-      ctx.body = userPlans;
-      return;
-    }
-
-    else if (planId) {
-      const parsedPlanId = parseInt(planId, 10);
+      })
+      ctx.status = 200 // OK
+      ctx.body = userPlans
+      return
+    } else if (planId) {
+      const parsedPlanId = parseInt(planId, 10)
       if (isNaN(parsedPlanId)) {
-        ctx.status = 400; // Bad Request
-        ctx.body = { message: 'planId debe ser un número válido' };
-        return;
+        ctx.status = 400 // Bad Request
+        ctx.body = { message: 'planId debe ser un número válido' }
+        return
       }
-      const plan = await Plan.findByPk(parsedPlanId);
-      console.log("plan: ", plan)
+      const plan = await Plan.findByPk(parsedPlanId)
+      console.log('plan: ', plan)
       if (plan) {
-        ctx.status = 200; // OK
-        ctx.body = plan;
+        ctx.status = 200 // OK
+        ctx.body = plan
       } else {
-        ctx.status = 404; // Not Found
-        ctx.body = { message: 'Plan no encontrado' };
+        ctx.status = 404 // Not Found
+        ctx.body = { message: 'Plan no encontrado' }
       }
-      return;
+      return
     }
 
-    ctx.status = 400; // Bad Request
-    ctx.body = { message: 'Debe proporcionar userId o planId' };
+    ctx.status = 400 // Bad Request
+    ctx.body = { message: 'Debe proporcionar userId o planId' }
   } catch (error) {
-    console.error(error);
-    ctx.status = 500; // Internal Server Error
-    ctx.body = { message: 'Error interno del servidor' };
+    console.error(error)
+    ctx.status = 500 // Internal Server Error
+    ctx.body = { message: 'Error interno del servidor' }
   }
 })
 
 router.get('/all-plans/:planId', async (ctx) => {
   try {
-    console.log("GET /all-plans/:planId");
+    console.log('GET /all-plans/:planId')
 
-    const { planId } = ctx.params;
-    console.log("  planId:", planId);
+    const { planId } = ctx.params
+    console.log('  planId:', planId)
 
-    const parsedPlanId = parseInt(planId, 10);
+    const parsedPlanId = parseInt(planId, 10)
     if (isNaN(parsedPlanId)) {
-      ctx.status = 400; // Bad Request
-      ctx.body = { message: 'planId debe ser un número válido' };
-      return;
+      ctx.status = 400 // Bad Request
+      ctx.body = { message: 'planId debe ser un número válido' }
+      return
     }
 
     // Obtener el plan por ID
-    const plan = await Plan.findByPk(parsedPlanId);
+    const plan = await Plan.findByPk(parsedPlanId)
 
     if (!plan) {
-      ctx.status = 404; // Not Found
-      ctx.body = { message: 'Plan no encontrado' };
-      return;
+      ctx.status = 404 // Not Found
+      ctx.body = { message: 'Plan no encontrado' }
+      return
     }
 
     // No hay verificación de permisos, todos los usuarios pueden acceder
 
     // Puedes ajustar la respuesta según tus necesidades
-    ctx.status = 200; // OK
-    ctx.body = plan;
+    ctx.status = 200 // OK
+    ctx.body = plan
   } catch (error) {
-    console.error(error);
-    ctx.status = 500; // Internal Server Error
-    ctx.body = { message: 'Error interno del servidor' };
+    console.error(error)
+    ctx.status = 500 // Internal Server Error
+    ctx.body = { message: 'Error interno del servidor' }
   }
-});
+})
 
 router.get('/all-plans', async (ctx) => {
   try {
@@ -502,34 +492,30 @@ router.get('/all-plans', async (ctx) => {
   } catch (error) {
     console.error(error)
     ctx.status = 500 // Internal Server Error
-    ctx.body = { message: 'Error interno del servidor' };
+    ctx.body = { message: 'Error interno del servidor' }
   }
 })
 
-async function create_default_mallas(userId) {
+async function createDefaultMallas (userId) {
   const mallas = [
     { filename: 'ingenieriaDeSoftware.json', name: 'Ingenieria De Software' },
     { filename: 'ingenieriaIndustrial.json', name: 'Ingenieria Industrial' },
     { filename: 'ingenieriaMecanica.json', name: 'Ingenieria Mecanica' }
-  ];
+  ]
 
   for (const malla of mallas) {
     try {
-      const data = await fs.readFile(path.join(__dirname, malla.filename), 'utf8');
-      const courses = JSON.parse(data);
+      const data = await fs.readFile(path.join(__dirname, malla.filename), 'utf8')
+      const courses = JSON.parse(data)
       await Plan.create({
         malla: JSON.stringify(courses),
         user_id: userId,
         name: malla.name
-      });
-
+      })
     } catch (error) {
-      console.error('Error creando mallas:', error);
+      console.error('Error creando mallas:', error)
     }
   }
 }
-
-
-
 
 module.exports = router
