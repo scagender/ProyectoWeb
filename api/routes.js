@@ -29,19 +29,6 @@ const verifyToken = async (ctx, next) => {
   }
 }
 
-router.get('/plans/:userId', verifyToken, async (ctx) => {
-  try {
-    const { userId } = ctx.params
-    const userPlans = await Plan.findAll({ where: { user_id: userId } })
-    ctx.status = 200 // OK
-    ctx.body = userPlans
-  } catch (error) {
-    console.error('Error retrieving user plans:', error)
-    ctx.status = 500 // Internal Server Error
-    ctx.body = { message: 'Internal Server Error' }
-  }
-})
-
 // USERS
 
 router.get('/users', async (ctx) => {
@@ -277,18 +264,6 @@ router.put('/update-user', verifyToken, async (ctx) => {
 
 // PLANS
 
-router.get('/plans', async (ctx) => {
-  try {
-    const plans = await Plan.findAll()
-    ctx.status = 200 // OK
-    ctx.body = plans
-  } catch (error) {
-    console.error(error)
-    ctx.status = 500 // Error interno del servidor
-    ctx.body = { message: 'Error interno del servidor' }
-  }
-})
-
 // POST /plans (Crear un nuevo plan)
 router.post('/create-plans', async (ctx) => {
   try {
@@ -317,7 +292,7 @@ router.put('/plans/:id', verifyToken, async (ctx) => {
       return;
     }
 
-    if (ctx.state.user.user_id !== plan.user_id) {
+    if (ctx.state.user.userId !== plan.user_id) {
       ctx.status = 403; // Forbidden
       ctx.body = { message: 'Acción no permitida: usted no es el propietario de este plan' };
       return;
@@ -336,58 +311,101 @@ router.put('/plans/:id', verifyToken, async (ctx) => {
 
 
 // DELETE /plans/:id (Eliminar un plan por su ID)
-router.delete('/plans/:id', async (ctx) => {
-  const planId = ctx.params.id
+router.delete('/plans/:id', verifyToken, async (ctx) => {
+  const planId = ctx.params.id;
 
   try {
-    const plan = await Plan.findByPk(planId)
+    const plan = await Plan.findByPk(planId);
     if (!plan) {
-      ctx.status = 404
-      ctx.body = { message: 'Plan no encontrado' }
-    } else {
-      await plan.destroy()
-      ctx.status = 204 // Sin Contenido
+      ctx.status = 404;
+      ctx.body = { message: 'Plan no encontrado' };
+      return;
     }
-  } catch (error) {
-    console.error(error)
-    ctx.status = 500
-    ctx.body = { message: 'Error interno del servidor' }
-  }
-})
 
-router.get('/plans/:userId', verifyToken, async (ctx) => {
-  try {
-    const { userId } = ctx.params
-    const userPlans = await Plan.findAll({ where: { user_id: userId } })
-    ctx.status = 200 // OK
-    ctx.body = userPlans
-  } catch (error) {
-    console.error(error)
-    ctx.status = 500 // Error interno del servidor
-    ctx.body = { message: 'Error interno del servidor' }
-  }
-})
-
-router.get('/plans/:planId/courses', async (ctx) => {
-  try {
-    const { planId } = ctx.params
-    const plan = await Plan.findByPk(planId, {
-      include: Course
-    })
-
-    if (plan) {
-      ctx.status = 200 // OK
-      ctx.body = plan.Courses
-    } else {
-      ctx.status = 404 // No encontrado
-      ctx.body = { message: 'Plan no encontrado' }
+    // Check if the authenticated user is the same as the user associated with the plan
+    if (ctx.state.user.userId !== plan.user_id) {
+      ctx.status = 403; // Forbidden
+      ctx.body = { message: 'Acción no permitida: usted no es el propietario de este plan' };
+      return;
     }
+
+    // Delete the plan
+    await plan.destroy();
+    ctx.status = 204; // No Content
   } catch (error) {
-    console.error(error)
-    ctx.status = 500 // Error interno del servidor
-    ctx.body = { message: 'Error interno del servidor' }
+    console.error(error);
+    ctx.status = 500;
+    ctx.body = { message: 'Error interno del servidor' };
   }
-})
+});
+
+
+router.get('/plans', verifyToken, async (ctx) => {
+  try {
+    console.log("Query", ctx.query)
+    const { userId, planId } = ctx.query;
+    console.log("GET /plans");
+    console.log("  userId:", userId);
+    console.log("  planId:", planId);
+    
+
+    // No se puede pedir user_id y plan_id a la vez
+    if (userId && planId) {
+      
+      ctx.status = 400; // Bad Request
+      ctx.body = { message: 'No se pueden especificar ambos, userId y planId' };
+      return;
+    }
+
+    // get by user_id
+    else if (userId) {
+      // Auth
+      if (ctx.state.user.userId !== parseInt(userId, 10)) {
+        console.log("state user_id:", ctx.state.user.userId);
+        console.log("param user:", userId);
+        ctx.status = 403; // Forbidden
+        ctx.body = { message: 'Acción no permitida: usted no puede ver los planes de este usuario' };
+        return;
+      }
+
+      const userPlans = await Plan.findAll({
+        where: { user_id: userId },
+        attributes: ['id', 'name', 'createdAt', 'updatedAt'] // Solo se retornan estos datos
+      });
+      ctx.status = 200; // OK
+      ctx.body = userPlans;
+      return;
+    }
+
+    else if (planId) {
+      const parsedPlanId = parseInt(planId, 10);
+      if (isNaN(parsedPlanId)) {
+        ctx.status = 400; // Bad Request
+        ctx.body = { message: 'planId debe ser un número válido' };
+        return;
+      }
+      const plan = await Plan.findByPk(parsedPlanId);
+      console.log("plan: ", plan)
+      if (plan) {
+        ctx.status = 200; // OK
+        ctx.body = plan;
+      } else {
+        ctx.status = 404; // Not Found
+        ctx.body = { message: 'Plan no encontrado' };
+      }
+      return;
+    }
+
+    ctx.status = 400; // Bad Request
+    ctx.body = { message: 'Debe proporcionar userId o planId' };
+  } catch (error) {
+    console.error(error);
+    ctx.status = 500; // Internal Server Error
+    ctx.body = { message: 'Error interno del servidor' };
+  }
+});
+
+
 
 
 
