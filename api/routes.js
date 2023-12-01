@@ -58,19 +58,6 @@ const verifyAdminToken = async (ctx, next) => {
     ctx.body = `Access denied: Invalid token: ${err.message}`
   }
 }
-// TODO: FALTA PROTEGER TODAS LAS RUTAS
-router.get('/plans/:userId', verifyToken, async (ctx) => {
-  try {
-    const { userId } = ctx.params
-    const userPlans = await Plan.findAll({ where: { user_id: userId } })
-    ctx.status = 200 // OK
-    ctx.body = userPlans
-  } catch (error) {
-    console.error('Error retrieving user plans:', error)
-    ctx.status = 500 // Internal Server Error
-    ctx.body = { message: 'Internal Server Error' }
-  }
-})
 // USERS
 
 router.get('/users', verifyAdminToken, async (ctx) => {
@@ -110,7 +97,7 @@ router.post('/login', async (ctx) => {
     if (user) {
       const checkedPassword = await bcrypt.compare(password, user.password)
       if (checkedPassword) {
-        const role = user.email === 'portal@uc.cl' ? 'admin' : 'user'
+        const role = user.email === 'planner@uc.cl' ? 'admin' : 'user'
         const token = jwt.sign({ userId: user.id, email: user.email, role }, process.env.JWT_SECRET, { expiresIn: '5m' })
         ctx.status = 200 // OK
         user.token = token
@@ -393,6 +380,7 @@ router.get('/plans', verifyToken, async (ctx) => {
   try {
     console.log("Query", ctx.query)
     const { userId, planId } = ctx.query;
+    const adminUserId = await User.findOne({ where: { email: 'planner@uc.cl' }}).then(user => user.id);
     console.log("GET /plans");
     console.log("  userId:", userId);
     console.log("  planId:", planId);
@@ -408,24 +396,21 @@ router.get('/plans', verifyToken, async (ctx) => {
 
     // get by user_id
     else if (userId) {
-      // Auth
-      if (ctx.state.user.userId !== parseInt(userId, 10)) {
-        console.log("state user_id:", ctx.state.user.userId);
-        console.log("param user:", userId);
-        ctx.status = 403; // Forbidden
+      const plansQuery = { where: { user_id: userId } };
+      
+      // Allow any user to access plans created by the admin
+      if (parseInt(userId, 10) === adminUserId) {
+        delete plansQuery.where.user_id; // Remove the user_id filter
+      } else if (ctx.state.user.userId !== parseInt(userId, 10)) {
+        ctx.status = 403;
         ctx.body = { message: 'Acción no permitida: usted no puede ver los planes de este usuario' };
         return;
       }
 
-      const userPlans = await Plan.findAll({
-        where: { user_id: userId },
-        attributes: ['id', 'name', 'createdAt', 'updatedAt'] // Solo se retornan estos datos
-      });
-      ctx.status = 200; // OK
+      const userPlans = await Plan.findAll(plansQuery);
+      ctx.status = 200;
       ctx.body = userPlans;
-      return;
-    }
-
+    } 
     else if (planId) {
       const parsedPlanId = parseInt(planId, 10);
       if (isNaN(parsedPlanId)) {
