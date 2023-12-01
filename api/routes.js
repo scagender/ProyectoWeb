@@ -381,6 +381,8 @@ router.get('/plans', verifyToken, async (ctx) => {
     console.log('GET /plans')
     console.log('  userId:', userId)
     console.log('  planId:', planId)
+    console.log('  adminId:', adminUserId)
+    console.log(userId)
 
     // No se puede pedir user_id y plan_id a la vez
     if (userId && planId) {
@@ -389,7 +391,7 @@ router.get('/plans', verifyToken, async (ctx) => {
       return
     }
     // get by user_id
-    else if (userId) {
+    else if (userId && !planId) {
       const plansQuery = { where: { user_id: userId } }
       // Allow any user to access plans created by the admin
       if (parseInt(userId, 10) === adminUserId) {
@@ -400,7 +402,9 @@ router.get('/plans', verifyToken, async (ctx) => {
         return
       }
 
+      console.log('pasa')
       const userPlans = await Plan.findAll(plansQuery)
+      console.log(userPlans)
       ctx.status = 200
       ctx.body = userPlans
     }
