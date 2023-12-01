@@ -346,18 +346,35 @@ router.delete('/plans/:id', async (ctx) => {
   }
 })
 
-router.get('/plans/:userId', verifyToken, async (ctx) => {
+router.get('/plans/:userId', async (ctx) => {
   try {
-    const { userId } = ctx.params
-    const userPlans = await Plan.findAll({ where: { user_id: userId } })
-    ctx.status = 200 // OK
-    ctx.body = userPlans
+    const { userId } = ctx.params;
+    const userPlans = await Plan.findAll({ 
+      where: { user_id: userId }
+    });
+
+    const formattedPlans = userPlans.map((plan) => {
+      return {
+        id: plan.id,
+        name: plan.name,
+        courses: plan.courses.map((course) => {
+          return {
+            sigla: course.sigla,
+            name: course.name,
+            credits: course.credits,
+          };
+        }),
+      };
+    });
+
+    ctx.status = 200; // OK
+    ctx.body = formattedPlans;
   } catch (error) {
-    console.error(error)
-    ctx.status = 500 // Error interno del servidor
-    ctx.body = { message: 'Error interno del servidor' }
+    console.error(error);
+    ctx.status = 500; // Error interno del servidor
+    ctx.body = { message: 'Error interno del servidor' };
   }
-})
+});
 
 router.get('/plans/:planId/courses', async (ctx) => {
   try {
