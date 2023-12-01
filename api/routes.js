@@ -1,5 +1,5 @@
 const Router = require('koa-router')
-const { User, Course, Plan } = require('./models')
+const { User, Plan } = require('./models')
 const bcrypt = require('bcrypt')
 const fs = require('fs').promises
 const path = require('path')
@@ -124,6 +124,7 @@ router.post('/login', async (ctx) => {
   }
 })
 
+// GET USER CON EMAIL (TODO: YA NI ME ACUERDO SI SE USA, SI VEN QUE NO BORRENLO NOMAS)
 router.get('/users/:userEmail', async (ctx) => {
   const { userEmail } = ctx.params
 
@@ -185,7 +186,7 @@ router.post('/create-users', async (ctx) => {
     const user = await User.create({
       username,
       email,
-      hashedPassword
+      password: hashedPassword
     })
 
     // Check if the email is planner@uc.cl
