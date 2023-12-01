@@ -1,7 +1,7 @@
 module.exports = (sequelize, DataTypes) => {
   const Plan = sequelize.define('Plan', {
-    semester: {
-      type: DataTypes.STRING
+    malla: {
+      type: DataTypes.TEXT
     },
     user_id: {
       type: DataTypes.INTEGER,
@@ -9,16 +9,15 @@ module.exports = (sequelize, DataTypes) => {
         model: 'Users',
         key: 'id'
       }
+    },
+    name: {
+      type: DataTypes.STRING
     }
   })
 
   Plan.associate = (models) => {
     Plan.belongsTo(models.User, {
       foreignKey: 'user_id'
-    })
-    Plan.belongsToMany(models.Course, {
-      through: 'plan_courses',
-      foreignKey: 'plan_id'
     })
   }
 

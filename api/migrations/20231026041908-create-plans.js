@@ -9,7 +9,10 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      semester: {
+      malla: {
+        type: Sequelize.TEXT
+      },
+      name: {
         type: Sequelize.STRING
       },
       user_id: {

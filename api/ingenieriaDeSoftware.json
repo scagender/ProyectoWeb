@@ -1,24 +1,89 @@
 {
-    "Semestre 1": { 
-        "QUIM100E": "Química",
-        "MAT1610": "Cálculo I",
-        "MAT1203": "Álgebra Lineal",
-        "ING1004": "Desafíos de la Ingeniería",
-        "FIL188": "Ética para Ingeniería"
-    },
-    "Semestre 2": {
-        "MAT1620": "Cálculo II",
-        "ICE1514": "Dinámica",
-        "FIS0154": "Laboratorio de Dinámica",
-        "ICS1513": "Introducción a la economía",
-        "IIC1103": "Introducción a la programación",
-        "LET0003": "Desarrollo de habilidades comunicativas"
-    },
-    "Semestre 3": {
-        "FIS1523": "Termodinámica",
-        "FIS0152": "Laboratorio de Termodinámica",
-        "MAT1630": "Cálculo III",
-        "ICS1513": "Ecuaciones Diferenciales",
-        "ICC2233": "Programación Avanzada"
-    }
+    "Semestre 1": [
+        {
+            "sigla": "MAT1203",
+            "name": "Algebra Lineal",
+            "credits": 10
+        },
+        {
+            "sigla": "MAT1610",
+            "name": "Calculo 1",
+            "credits": 10
+        },
+        {
+            "sigla": "QUIM100E",
+            "name": "Química",
+            "credits": 10
+        },
+        {
+            "sigla": "FIL188",
+            "name": "Ética para Ingeniería",
+            "credits": 10
+        }
+    ],
+    "Semestre 2": [
+        {
+            "sigla": "FIS0154",
+            "name": "Laboratorio de Dinámica",
+            "credits": 0
+        },
+        {
+            "sigla": "ICE1514",
+            "name": "Dinámica",
+            "credits": 10
+        },
+        {
+            "sigla": "MAT1620",
+            "name": "Cálculo II",
+            "credits": 10
+        },
+        {
+            "sigla": "ICS1513",
+            "name": "Introducción a la economía",
+            "credits": 10
+        },
+        {
+            "sigla": "IIC1103",
+            "name": "Introducción a la programación",
+            "credits": 10
+        },
+        {
+            "sigla": "LET0003",
+            "name": "Desarrollo de habilidades comunicativas",
+            "credits": 10
+        }
+    ],
+
+    "Semestre 3": [
+        {
+            "sigla": "FIS1523",
+            "name": "Termodinámica",
+            "credits": 0
+        },
+        {
+            "sigla": "FIS0152",
+            "name": "Laboratorio de Termodinámica",
+            "credits": 10
+        },
+        {
+            "sigla": "MAT1630",
+            "name": "Cálculo III",
+            "credits": 10
+        },
+        {
+            "sigla": "ICS1513",
+            "name": "Ecuaciones Diferenciales",
+            "credits": 10
+        },
+        {
+            "sigla": "ICC2233",
+            "name": "Programación Avanzada",
+            "credits": 10
+        },
+        {
+            "sigla": "X",
+            "name": "OFG Electivo",
+            "credits": 10
+        }
+    ]
 }
