@@ -58,7 +58,7 @@ const verifyAdminToken = async (ctx, next) => {
     ctx.body = `Access denied: Invalid token: ${err.message}`
   }
 }
-// TODO: FALTA PROTEGER TODAS LAS RUTAS
+
 router.get('/plans/:userId', verifyToken, async (ctx) => {
   try {
     const { userId } = ctx.params
@@ -137,7 +137,6 @@ router.post('/login', async (ctx) => {
   }
 })
 
-// GET USER CON EMAIL (TODO: YA NI ME ACUERDO SI SE USA, SI VEN QUE NO BORRENLO NOMAS)
 router.get('/users/:userEmail', async (ctx) => {
   const { userEmail } = ctx.params
 
@@ -163,7 +162,6 @@ router.get('/users/:userEmail', async (ctx) => {
   }
 })
 
-// TODO: NO FUNCIONA
 router.get('/users/:id', async (ctx) => {
   const { id } = ctx.params.id
 
