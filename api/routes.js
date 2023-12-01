@@ -423,7 +423,7 @@ async function create_default_mallas(userId) {
       await Plan.create({
         malla: JSON.stringify(courses),
         user_id: userId,
-        name: malla.name,
+        name: malla.name
       });
 
     } catch (error) {
