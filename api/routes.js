@@ -199,6 +199,7 @@ router.post('/create-users', async (ctx) => {
     const user = await User.create({
       username,
       email,
+      password: hashedPassword
     });
 
     // Check if the email is planner@uc.cl
@@ -452,11 +453,58 @@ router.get('/plans', verifyToken, async (ctx) => {
     ctx.status = 500; // Internal Server Error
     ctx.body = { message: 'Error interno del servidor' };
   }
+})
+
+router.get('/all-plans/:planId', async (ctx) => {
+  try {
+    console.log("GET /all-plans/:planId");
+
+    const { planId } = ctx.params;
+    console.log("  planId:", planId);
+
+    const parsedPlanId = parseInt(planId, 10);
+    if (isNaN(parsedPlanId)) {
+      ctx.status = 400; // Bad Request
+      ctx.body = { message: 'planId debe ser un número válido' };
+      return;
+    }
+
+    // Obtener el plan por ID
+    const plan = await Plan.findByPk(parsedPlanId);
+
+    if (!plan) {
+      ctx.status = 404; // Not Found
+      ctx.body = { message: 'Plan no encontrado' };
+      return;
+    }
+
+    // No hay verificación de permisos, todos los usuarios pueden acceder
+
+    // Puedes ajustar la respuesta según tus necesidades
+    ctx.status = 200; // OK
+    ctx.body = plan;
+  } catch (error) {
+    console.error(error);
+    ctx.status = 500; // Internal Server Error
+    ctx.body = { message: 'Error interno del servidor' };
+  }
 });
 
-
-
-
+router.get('/all-plans', async (ctx) => {
+  try {
+    const userId = 1 // Cambia esto al ID del usuario específico que deseas
+    const userPlans = await Plan.findAll({
+      where: { user_id: userId },
+      attributes: ['id', 'name', 'createdAt', 'updatedAt']
+    })
+    ctx.status = 200 // OK
+    ctx.body = userPlans
+  } catch (error) {
+    console.error(error)
+    ctx.status = 500 // Internal Server Error
+    ctx.body = { message: 'Error interno del servidor' };
+  }
+})
 
 async function create_default_mallas(userId) {
   const mallas = [
