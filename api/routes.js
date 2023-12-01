@@ -124,7 +124,6 @@ router.post('/login', async (ctx) => {
   }
 })
 
-// GET USER CON EMAIL (TODO: YA NI ME ACUERDO SI SE USA, SI VEN QUE NO BORRENLO NOMAS)
 router.get('/users/:userEmail', async (ctx) => {
   const { userEmail } = ctx.params
 
