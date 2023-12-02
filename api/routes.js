@@ -442,7 +442,6 @@ router.get('/plans', verifyToken, async (ctx) => {
     ctx.body = { message: 'Error interno del servidor' }
   }
 })
-
 router.get('/all-plans/:planId', async (ctx) => {
   try {
     console.log('GET /all-plans/:planId')
@@ -467,6 +466,7 @@ router.get('/all-plans/:planId', async (ctx) => {
     }
 
     // No hay verificación de permisos, todos los usuarios pueden acceder
+
 
     // Puedes ajustar la respuesta según tus necesidades
     ctx.status = 200 // OK
