@@ -58,19 +58,6 @@ const verifyAdminToken = async (ctx, next) => {
     ctx.body = `Access denied: Invalid token: ${err.message}`
   }
 }
-
-router.get('/plans/:userId', verifyToken, async (ctx) => {
-  try {
-    const { userId } = ctx.params
-    const userPlans = await Plan.findAll({ where: { user_id: userId } })
-    ctx.status = 200 // OK
-    ctx.body = userPlans
-  } catch (error) {
-    console.error('Error retrieving user plans:', error)
-    ctx.status = 500 // Internal Server Error
-    ctx.body = { message: 'Internal Server Error' }
-  }
-})
 // USERS
 
 router.get('/users', verifyAdminToken, async (ctx) => {
@@ -388,6 +375,9 @@ router.get('/plans', verifyToken, async (ctx) => {
   try {
     console.log('Query', ctx.query)
     const { userId, planId } = ctx.query
+
+    const adminUserId = await User.findOne({ where: { email: 'planner@uc.cl' } }).then(user => user.id)
+
     console.log('GET /plans')
     console.log('  userId:', userId)
     console.log('  planId:', planId)
@@ -397,6 +387,15 @@ router.get('/plans', verifyToken, async (ctx) => {
       ctx.status = 400 // Bad Request
       ctx.body = { message: 'No se pueden especificar ambos, userId y planId' }
       return
+    }
+    // get by user_id
+    else if (userId) {
+      const plansQuery = { where: { user_id: userId } }
+      // Allow any user to access plans created by the admin
+      if (parseInt(userId, 10) === adminUserId) {
+        delete plansQuery.where.user_id // Remove the user_id filter
+      } else if (ctx.state.user.userId !== parseInt(userId, 10)) {
+        ctx.status = 403
     // get by user_id
     } else if (userId) {
       // Auth
@@ -408,14 +407,11 @@ router.get('/plans', verifyToken, async (ctx) => {
         return
       }
 
-      const userPlans = await Plan.findAll({
-        where: { user_id: userId },
-        attributes: ['id', 'name', 'createdAt', 'updatedAt'] // Solo se retornan estos datos
-      })
-      ctx.status = 200 // OK
+      const userPlans = await Plan.findAll(plansQuery)
+      ctx.status = 200
       ctx.body = userPlans
-      return
-    } else if (planId) {
+    }
+    else if (planId) {
       const parsedPlanId = parseInt(planId, 10)
       if (isNaN(parsedPlanId)) {
         ctx.status = 400 // Bad Request
@@ -442,6 +438,7 @@ router.get('/plans', verifyToken, async (ctx) => {
     ctx.body = { message: 'Error interno del servidor' }
   }
 })
+
 router.get('/all-plans/:planId', async (ctx) => {
   try {
     console.log('GET /all-plans/:planId')
@@ -464,8 +461,6 @@ router.get('/all-plans/:planId', async (ctx) => {
       ctx.body = { message: 'Plan no encontrado' }
       return
     }
-
-    // No hay verificación de permisos, todos los usuarios pueden acceder
 
 
     // Puedes ajustar la respuesta según tus necesidades
