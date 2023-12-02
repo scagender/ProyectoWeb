@@ -9,6 +9,9 @@ Para correr:
      -  `koa`: puerto 3000
      -  `postgres`: puerto 5432
 
+
+Para que el programa funcione correctamente hay que crear el usuario admin primero, ya que al crearlo se crean las mallas base. El admin debe tener mail planner@uc.cl y debe ser el primer usuario creado. Luego, no hay restricciones.
+
 _Eslint_
 Correrlo en backend: primero ./node_modules/.bin/eslint --init, se elige check syntax, find problems and enforce code style, JavaScript modules, None, No typescript, Node, use a popular guide, Standard, JSON. Luego correr ./node_modules/.bin/eslint . --fix
 
