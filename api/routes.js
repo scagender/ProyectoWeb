@@ -7,7 +7,7 @@ const router = new Router()
 const jwt = require('jsonwebtoken')
 
 const verifyToken = async (ctx, next) => {
-  const accessTokenHeader = ctx.headers['authorization']
+  const accessTokenHeader = ctx.headers.authorization
 
   if (!accessTokenHeader || !accessTokenHeader.startsWith('Bearer ')) {
     ctx.status = 401
@@ -30,7 +30,7 @@ const verifyToken = async (ctx, next) => {
 }
 
 const verifyAdminToken = async (ctx, next) => {
-  const accessTokenHeader = ctx.headers['authorization']
+  const accessTokenHeader = ctx.headers.authorization
 
   if (!accessTokenHeader || !accessTokenHeader.startsWith('Bearer ')) {
     ctx.status = 401
@@ -58,6 +58,19 @@ const verifyAdminToken = async (ctx, next) => {
     ctx.body = `Access denied: Invalid token: ${err.message}`
   }
 }
+
+router.get('/plans/:userId', verifyToken, async (ctx) => {
+  try {
+    const { userId } = ctx.params
+    const userPlans = await Plan.findAll({ where: { user_id: userId } })
+    ctx.status = 200 // OK
+    ctx.body = userPlans
+  } catch (error) {
+    console.error('Error retrieving user plans:', error)
+    ctx.status = 500 // Internal Server Error
+    ctx.body = { message: 'Internal Server Error' }
+  }
+})
 // USERS
 
 router.get('/users', verifyAdminToken, async (ctx) => {
@@ -92,7 +105,7 @@ router.post('/login', async (ctx) => {
       return
     }
     // Utiliza el método findOne de Sequelize para buscar un usuario por email
-    const user = await User.findOne({ where: { email: email } })
+    const user = await User.findOne({ where: { email } })
 
     if (user) {
       const checkedPassword = await bcrypt.compare(password, user.password)
@@ -124,7 +137,6 @@ router.post('/login', async (ctx) => {
   }
 })
 
-// GET USER CON EMAIL (TODO: YA NI ME ACUERDO SI SE USA, SI VEN QUE NO BORRENLO NOMAS)
 router.get('/users/:userEmail', async (ctx) => {
   const { userEmail } = ctx.params
 
@@ -150,7 +162,6 @@ router.get('/users/:userEmail', async (ctx) => {
   }
 })
 
-// TODO: NO FUNCIONA
 router.get('/users/:id', async (ctx) => {
   const { id } = ctx.params.id
 
@@ -191,7 +202,7 @@ router.post('/create-users', async (ctx) => {
 
     // Check if the email is planner@uc.cl
     if (email === 'planner@uc.cl') {
-      await create_default_mallas(user.id)
+      await createDefaultMallas(user.id)
     }
 
     const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' })
@@ -220,7 +231,7 @@ router.delete('/delete-user', verifyToken, async (ctx) => {
     // Utiliza el método findOne de Sequelize para buscar un usuario por email
     const user = await User.findOne({
       where: {
-        email: email
+        email
       }
     })
 
@@ -264,7 +275,7 @@ router.put('/update-user', verifyToken, async (ctx) => {
     // Use Sequelize's findOne method to find a user by email
     const user = await User.findOne({
       where: {
-        email: email
+        email
       }
     })
 
@@ -377,38 +388,34 @@ router.get('/plans', verifyToken, async (ctx) => {
   try {
     console.log('Query', ctx.query)
     const { userId, planId } = ctx.query
-    const adminUserId = await User.findOne({ where: { email: 'planner@uc.cl' } }).then(user => user.id)
     console.log('GET /plans')
     console.log('  userId:', userId)
     console.log('  planId:', planId)
-    console.log('  adminId:', adminUserId)
-    console.log(userId)
 
     // No se puede pedir user_id y plan_id a la vez
     if (userId && planId) {
       ctx.status = 400 // Bad Request
       ctx.body = { message: 'No se pueden especificar ambos, userId y planId' }
       return
-    }
     // get by user_id
-    else if (userId && !planId) {
-      const plansQuery = { where: { user_id: userId } }
-      // Allow any user to access plans created by the admin
-      if (parseInt(userId, 10) === adminUserId) {
-        delete plansQuery.where.user_id // Remove the user_id filter
-      } else if (ctx.state.user.userId !== parseInt(userId, 10)) {
-        ctx.status = 403
+    } else if (userId) {
+      // Auth
+      if (ctx.state.user.userId !== parseInt(userId, 10)) {
+        console.log('state user_id:', ctx.state.user.userId)
+        console.log('param user:', userId)
+        ctx.status = 403 // Forbidden
         ctx.body = { message: 'Acción no permitida: usted no puede ver los planes de este usuario' }
         return
       }
 
-      console.log('pasa')
-      const userPlans = await Plan.findAll(plansQuery)
-      console.log(userPlans)
-      ctx.status = 200
+      const userPlans = await Plan.findAll({
+        where: { user_id: userId },
+        attributes: ['id', 'name', 'createdAt', 'updatedAt'] // Solo se retornan estos datos
+      })
+      ctx.status = 200 // OK
       ctx.body = userPlans
-    }
-    else if (planId) {
+      return
+    } else if (planId) {
       const parsedPlanId = parseInt(planId, 10)
       if (isNaN(parsedPlanId)) {
         ctx.status = 400 // Bad Request
@@ -435,8 +442,59 @@ router.get('/plans', verifyToken, async (ctx) => {
     ctx.body = { message: 'Error interno del servidor' }
   }
 })
+router.get('/all-plans/:planId', async (ctx) => {
+  try {
+    console.log('GET /all-plans/:planId')
 
-async function create_default_mallas(userId) {
+    const { planId } = ctx.params
+    console.log('  planId:', planId)
+
+    const parsedPlanId = parseInt(planId, 10)
+    if (isNaN(parsedPlanId)) {
+      ctx.status = 400 // Bad Request
+      ctx.body = { message: 'planId debe ser un número válido' }
+      return
+    }
+
+    // Obtener el plan por ID
+    const plan = await Plan.findByPk(parsedPlanId)
+
+    if (!plan) {
+      ctx.status = 404 // Not Found
+      ctx.body = { message: 'Plan no encontrado' }
+      return
+    }
+
+    // No hay verificación de permisos, todos los usuarios pueden acceder
+
+
+    // Puedes ajustar la respuesta según tus necesidades
+    ctx.status = 200 // OK
+    ctx.body = plan
+  } catch (error) {
+    console.error(error)
+    ctx.status = 500 // Internal Server Error
+    ctx.body = { message: 'Error interno del servidor' }
+  }
+})
+
+router.get('/all-plans', async (ctx) => {
+  try {
+    const userId = 1 // Cambia esto al ID del usuario específico que deseas
+    const userPlans = await Plan.findAll({
+      where: { user_id: userId },
+      attributes: ['id', 'name', 'createdAt', 'updatedAt']
+    })
+    ctx.status = 200 // OK
+    ctx.body = userPlans
+  } catch (error) {
+    console.error(error)
+    ctx.status = 500 // Internal Server Error
+    ctx.body = { message: 'Error interno del servidor' }
+  }
+})
+
+async function createDefaultMallas (userId) {
   const mallas = [
     { filename: 'ingenieriaDeSoftware.json', name: 'Ingenieria De Software' },
     { filename: 'ingenieriaIndustrial.json', name: 'Ingenieria Industrial' },
